@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Pencil,
   IndianRupee,
+  MessageCircle,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Payment, Room, Ticket, OwnerDashboardStats, PGProfile, TenantHistory, RoomEBReading, Tenant } from "@/types";
@@ -218,6 +219,16 @@ export default function OwnerDashboardPage() {
     } finally {
       setResolvingTicketId(null);
     }
+  };
+
+  
+  const handleShareWhatsApp = (tenantName: string, phone: string, amount: number, room: string) => {
+    const clean = phone.replace(/[^0-9]/g, "").slice(-10);
+    const text = `Hi ${tenantName}, this is a gentle reminder regarding your PG rent of ₹${amount.toLocaleString(
+      "en-IN"
+    )} for Room ${room}. Please log in to PGM to clear your dues. Thank you!`;
+    const url = `https://wa.me/91${clean}?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
   };
 
   const handleCopyReminder = (tenantName: string, phone: string, amount: number, room: string) => {
@@ -788,6 +799,21 @@ export default function OwnerDashboardPage() {
                                       <span>Remind</span>
                                     </>
                                   )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleShareWhatsApp(
+                                      p.tenantName || "Tenant",
+                                      p.phoneNumber || "",
+                                      p.amount,
+                                      p.roomNumber || ""
+                                    )
+                                  }
+                                  title="Send Reminder via WhatsApp"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 transition-all"
+                                >
+                                  <MessageCircle className="h-3 w-3 text-emerald-600 fill-emerald-600/20" />
+                                  <span>WhatsApp</span>
                                 </button>
                                 <button
                                   onClick={() => handleOpenEditBill(p)}
