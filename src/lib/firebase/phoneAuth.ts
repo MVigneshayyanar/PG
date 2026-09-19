@@ -1,4 +1,4 @@
-﻿import { auth } from "./client";
+import { auth } from "./client";
 import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -13,10 +13,13 @@ declare global {
 }
 
 /**
- * Initializes an invisible RecaptchaVerifier on the specified DOM element.
+ * Initializes a visible RecaptchaVerifier ("I'm not a robot" checkbox) on the specified DOM element.
  * Safe for React re-renders and single-page navigation.
  */
-export async function initRecaptcha(containerId = "recaptcha-container"): Promise<RecaptchaVerifier> {
+export async function initRecaptcha(
+  containerId = "recaptcha-container",
+  onSolved?: () => void
+): Promise<RecaptchaVerifier> {
   if (typeof window === "undefined") {
     throw new Error("reCAPTCHA can only be initialized on the client");
   }
@@ -27,7 +30,7 @@ export async function initRecaptcha(containerId = "recaptcha-container"): Promis
     );
   }
 
-  // Clear existing verifier if any to prevent stale widget state
+  // Clear existing verifier if any to prevent duplicate or stale widgets
   if (window.recaptchaVerifier) {
     try {
       window.recaptchaVerifier.clear();
@@ -43,32 +46,27 @@ export async function initRecaptcha(containerId = "recaptcha-container"): Promis
     throw new Error(`reCAPTCHA container #${containerId} not found in the DOM.`);
   }
 
+  // Clear any existing children inside container to prevent duplicate iframes
+  container.innerHTML = "";
+
   const verifier = new RecaptchaVerifier(auth, containerId, {
-    size: "invisible",
+    size: "normal", // Visible "I'm not a robot" checkbox
     callback: () => {
-      // reCAPTCHA solved
+      if (onSolved) onSolved();
     },
     "expired-callback": () => {
-      console.warn("reCAPTCHA expired, resetting...");
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch (_) {}
-        window.recaptchaVerifier = undefined;
-      }
+      console.warn("reCAPTCHA expired, please check the box again.");
     },
   });
 
-  // Explicitly render to establish the widget ID
   await verifier.render();
-
   window.recaptchaVerifier = verifier;
   return verifier;
 }
 
 /**
  * Sends a real SMS verification code via Firebase Phone Authentication.
- * Automatically handles formatting to Indian E.164 (+91) format.
+ * Automatically formats to Indian E.164 (+91) format and reuses the visible checkbox verifier.
  */
 export async function sendFirebaseOtp(
   phoneNumber: string,
@@ -86,7 +84,12 @@ export async function sendFirebaseOtp(
   }
 
   const formattedPhone = `+91${cleanPhone}`;
-  const appVerifier = await initRecaptcha(containerId);
+
+  // Use the existing rendered verifier or initialize a fresh one
+  let appVerifier = window.recaptchaVerifier;
+  if (!appVerifier) {
+    appVerifier = await initRecaptcha(containerId);
+  }
 
   return await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
 }

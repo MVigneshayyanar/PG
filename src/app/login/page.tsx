@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,7 +13,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { sendFirebaseOtp, confirmFirebaseOtp } from "@/lib/firebase/phoneAuth";
+import { sendFirebaseOtp, confirmFirebaseOtp, initRecaptcha } from "@/lib/firebase/phoneAuth";
 import type { ConfirmationResult } from "firebase/auth";
 
 export default function UnifiedLoginPage() {
@@ -25,6 +25,18 @@ export default function UnifiedLoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+
+  // Initialize visible "I'm not a robot" reCAPTCHA checkbox on mount or when returning to phone entry
+  useEffect(() => {
+    if (!otpSent) {
+      const timer = setTimeout(() => {
+        initRecaptcha("recaptcha-container").catch((err) => {
+          console.warn("reCAPTCHA initialization warning:", err);
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [otpSent]);
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -49,7 +61,7 @@ export default function UnifiedLoginPage() {
       if (err?.code === "auth/invalid-phone-number") {
         msg = "The phone number format is invalid. Please check the digits.";
       } else if (err?.code === "auth/invalid-app-credential") {
-        msg = "App Credential Error: Please add your domain (e.g. your Vercel URL or localhost) to Firebase Console -> Authentication -> Settings -> Authorized Domains, and verify Firebase environment variables.";
+        msg = "App Credential Error: Please ensure your domain is added in Firebase Console -> Authentication -> Settings -> Authorized Domains.";
       } else if (err?.code === "auth/operation-not-allowed") {
         msg = "SMS Region Blocked: In Firebase Console -> Authentication -> Settings -> SMS Region Policy, allow India (+91), or add your number under 'Phone numbers for testing'.";
       } else if (err?.code === "auth/quota-exceeded") {
@@ -60,6 +72,7 @@ export default function UnifiedLoginPage() {
         msg = "Too many attempts from this IP/device. Please wait a few minutes before trying again.";
       }
       setErrorMessage(msg);
+      setOtpSent(false);
     } finally {
       setLoading(false);
     }
@@ -110,7 +123,7 @@ export default function UnifiedLoginPage() {
           "pgm_session",
           JSON.stringify({
             role: data.role,
-            name: data.user?.name || (data.role === "owner" ? "Owner" : "Resident"),
+            name: data.user?.name || (data.role === "admin" ? "Super Admin" : data.role === "owner" ? "Owner" : "Resident"),
             user: data.user,
             phone: clean,
             token: data.token,
@@ -142,9 +155,6 @@ export default function UnifiedLoginPage() {
     <div className="min-h-screen flex flex-col bg-[#f1f7f2] text-[#072e18]">
       <Navbar />
 
-      {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
-      <div id="recaptcha-container"></div>
-
       <div className="flex-1 flex items-center justify-center p-4 py-12">
         <div className="w-full max-w-md space-y-6">
           {/* Header */}
@@ -158,7 +168,7 @@ export default function UnifiedLoginPage() {
               Unified Portal Login
             </h1>
             <p className="text-xs text-[#33613b]">
-              Enter your registered mobile number. We will send an official Firebase SMS OTP to verify your identity.
+              Enter your registered mobile number and solve the verification checkbox to receive an SMS OTP.
             </p>
           </div>
 
@@ -172,23 +182,25 @@ export default function UnifiedLoginPage() {
 
           {errorMessage && (
             <div
-              className={`rounded-2xl p-4 text-xs flex flex-col gap-2.5 ${(errorMessage.includes("9626855406") || errorMessage.includes("9626855406")) || errorMessage.includes("not approved yet") || errorMessage.includes("not part of any PG")
-                ? "bg-amber-50 border border-amber-200 text-amber-950"
-                : "bg-rose-50 border border-rose-200 text-rose-800"
-                }`}
+              className={`rounded-2xl p-4 text-xs flex flex-col gap-2.5 ${
+                (errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) || errorMessage.includes("not approved yet") || errorMessage.includes("not part of any PG")
+                  ? "bg-amber-50 border border-amber-200 text-amber-950"
+                  : "bg-rose-50 border border-rose-200 text-rose-800"
+              }`}
             >
               <div className="flex items-start gap-2.5">
                 <AlertCircle
-                  className={`h-5 w-5 shrink-0 mt-0.5 ${(errorMessage.includes("9626855406") || errorMessage.includes("9626855406")) || errorMessage.includes("not part of any PG")
-                    ? "text-amber-600"
-                    : "text-rose-600"
-                    }`}
+                  className={`h-5 w-5 shrink-0 mt-0.5 ${
+                    (errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) || errorMessage.includes("not part of any PG")
+                      ? "text-amber-600"
+                      : "text-rose-600"
+                  }`}
                 />
                 <div className="leading-relaxed">
                   {errorMessage.includes("not part of any PG") && (
                     <p className="font-bold text-amber-900 mb-0.5">Not Registered</p>
                   )}
-                  {(errorMessage.includes("9626855406") || errorMessage.includes("9626855406")) && !errorMessage.includes("not part of any PG") && (
+                  {(errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) && !errorMessage.includes("not part of any PG") && (
                     <p className="font-bold text-amber-900 mb-0.5">Verification Required</p>
                   )}
                   <p>{errorMessage}</p>
@@ -205,7 +217,7 @@ export default function UnifiedLoginPage() {
                 </Link>
               )}
 
-              {(errorMessage.includes("9626855406") || errorMessage.includes("9626855406")) && (
+              {(errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) && !errorMessage.includes("not part of any PG") && (
                 <a
                   href="tel:9626855406"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#07361b] hover:bg-[#052814] text-white px-4 py-2.5 font-bold transition-colors w-full text-center shadow-xs"
@@ -241,8 +253,13 @@ export default function UnifiedLoginPage() {
                     />
                   </div>
                   <p className="text-[11px] text-[#51a162] mt-1.5">
-                    We will send an SMS verification OTP to your registered phone via Firebase.
+                    We will send an SMS verification OTP to your registered phone.
                   </p>
+                </div>
+
+                {/* Visible "I'm not a robot" reCAPTCHA Checkbox */}
+                <div className="flex flex-col items-center justify-center py-2">
+                  <div id="recaptcha-container" className="min-h-[78px] min-w-[304px] overflow-hidden rounded-xl border border-[#e2efe4] bg-[#fafdfa]"></div>
                 </div>
 
                 <button

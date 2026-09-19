@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Smartphone,
@@ -12,7 +12,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { sendFirebaseOtp, confirmFirebaseOtp } from "@/lib/firebase/phoneAuth";
+import { sendFirebaseOtp, confirmFirebaseOtp, initRecaptcha } from "@/lib/firebase/phoneAuth";
 import type { ConfirmationResult } from "firebase/auth";
 
 export default function TenantLoginPage() {
@@ -25,6 +25,19 @@ export default function TenantLoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toastNotice, setToastNotice] = useState<string | null>(null);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+
+  // Initialize visible "I'm not a robot" checkbox on mount
+  useEffect(() => {
+    if (!otpSent) {
+      const timer = setTimeout(() => {
+        initRecaptcha("tenant-recaptcha-container").catch((err) => {
+          console.warn("Tenant reCAPTCHA init warning:", err);
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [otpSent]);
+
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -133,8 +146,7 @@ export default function TenantLoginPage() {
     <div className="min-h-screen flex flex-col bg-[#072e18]">
       <Navbar />
 
-      {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
-      <div id="tenant-recaptcha-container"></div>
+
 
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md space-y-6">
@@ -193,6 +205,11 @@ export default function TenantLoginPage() {
                   <p className="text-[11px] text-gray-300 mt-1">
                     Your number must be registered by your PG owner.
                   </p>
+                </div>
+
+                {/* Visible "I'm not a robot" Checkbox */}
+                <div className="flex flex-col items-center justify-center py-2">
+                  <div id="tenant-recaptcha-container" className="min-h-[78px] min-w-[304px] overflow-hidden rounded-xl bg-white/10 p-1"></div>
                 </div>
 
                 <button
