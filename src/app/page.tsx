@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Sparkles,
   Loader2,
-  Star,
   X,
   BedDouble,
   SlidersHorizontal,
@@ -463,17 +462,17 @@ export default function HomePage() {
                 <div className="rounded-3xl bg-[#d2f0d9] border border-[#b5e6bf] p-5 text-left flex flex-col justify-between space-y-3 shadow-xs">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-display font-black text-2xl text-[#07361b]">4.9</span>
-                      <Star className="h-5 w-5 fill-[#ff6b00] text-[#ff6b00]" />
+                      <span className="font-display font-black text-2xl text-[#07361b]">0%</span>
+                      <span className="h-2 w-2 rounded-full bg-[#1e7c3b]" />
                     </div>
-                    <h3 className="font-bold text-xs text-[#07361b] mt-1">Tenant Trust Rating</h3>
+                    <h3 className="font-bold text-xs text-[#07361b] mt-1">Zero Brokerage</h3>
                     <p className="text-[11px] text-[#24452c] mt-0.5">
-                      Verified resident ratings, safe amenities, and transparent dues.
+                      Connect directly with property managers with transparent rental terms.
                     </p>
                   </div>
                   <div className="flex items-center gap-1 text-[11px] font-bold text-[#07361b]">
                     <CheckCircle2 className="h-4 w-4 text-[#1e7c3b]" />
-                    <span>Real Resident Feedback</span>
+                    <span>Direct Resident Onboarding</span>
                   </div>
                 </div>
               </div>
@@ -603,10 +602,6 @@ export default function HomePage() {
                         <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#dcf2e1] text-[#07361b] border border-[#bce6c5]">
                           Verified
                         </span>
-                        <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[11px] font-bold border border-amber-200">
-                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                          <span>4.9 Rating</span>
-                        </div>
                       </div>
 
                       <p className="text-xs text-[#33613b] flex items-center gap-1 font-medium">

@@ -11,7 +11,6 @@ import {
   Sparkles,
   Loader2,
   ArrowRight,
-  Zap,
   ExternalLink,
   AlertCircle,
   Lock,
@@ -304,35 +303,14 @@ export function RazorpayModal({
 
               {/* Action Buttons */}
               <div className="space-y-2.5 pt-1">
-                {/* Option 1: Official Razorpay SDK Popup */}
                 <button
                   type="button"
                   onClick={handleLaunchCheckoutSdk}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#07361b] hover:bg-[#0b4d27] py-3.5 px-4 text-xs font-bold text-white shadow-md transition-all active:scale-98 disabled:opacity-50"
-                >
-                  <CreditCard className="h-4 w-4 text-[#ff6b00]" />
-                  <span>Launch Official Razorpay Gateway</span>
-                </button>
-
-                {/* Option 2: Instant Sandbox / Demo Verification */}
-                <button
-                  type="button"
-                  onClick={() => handleCompleteVerification()}
-                  disabled={loading}
                   className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#ff6b00] hover:bg-[#eb5e00] py-3.5 px-4 text-xs font-bold text-white shadow-md shadow-[#ff6b00]/25 transition-all active:scale-98 disabled:opacity-50"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Verifying Payment...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4" />
-                      <span>Pay & Clear Dues (Instant Confirmation)</span>
-                    </>
-                  )}
+                  <CreditCard className="h-4 w-4" />
+                  <span>Pay with Razorpay Gateway</span>
                 </button>
               </div>
 
