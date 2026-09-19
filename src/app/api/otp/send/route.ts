@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Please use the Firebase client SDK to receive your official SMS OTP at +91 ${cleanPhone}.`,
+      message: `Please complete verification to receive your SMS OTP at +91 ${cleanPhone}.`,
       phoneNumber: cleanPhone,
     });
   } catch (error) {

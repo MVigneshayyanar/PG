@@ -22,14 +22,14 @@ export async function POST(req: NextRequest) {
         const tokenPhone = (decoded.phone_number || "").replace(/[^0-9]/g, "").slice(-10);
         if (tokenPhone && tokenPhone !== cleanPhone) {
           return NextResponse.json(
-            { success: false, error: "Phone number does not match the verified Firebase token." },
+            { success: false, error: "Phone number does not match the verified session token." },
             { status: 403 }
           );
         }
       } catch (err: any) {
         console.error("Firebase Admin ID token verification error:", err);
         return NextResponse.json(
-          { success: false, error: "Firebase Phone verification token is invalid or expired." },
+          { success: false, error: "Phone verification token is invalid or expired." },
           { status: 401 }
         );
       }
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Phone verified successfully via Firebase",
+      message: "Phone verified successfully",
       token: customToken,
       tenant,
     });

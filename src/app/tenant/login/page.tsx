@@ -55,20 +55,20 @@ export default function TenantLoginPage() {
       const confirmation = await sendFirebaseOtp(clean, "tenant-recaptcha-container");
       setConfirmationResult(confirmation);
       setOtpSent(true);
-      setToastNotice(`SMS verification OTP sent via Firebase to +91 ${clean}.`);
+      setToastNotice(`SMS verification code sent to +91 ${clean}.`);
     } catch (err: any) {
       console.error("Firebase send OTP error:", err);
       let msg = err?.message || "Failed to send verification SMS.";
       if (err?.code === "auth/invalid-phone-number") {
         msg = "The phone number format is invalid.";
       } else if (err?.code === "auth/invalid-app-credential") {
-        msg = "App Credential Error: Please add your domain (e.g. your Vercel URL or localhost) to Firebase Console -> Authentication -> Settings -> Authorized Domains, and verify Firebase environment variables.";
+        msg = "Unable to verify security credentials. Please try again or contact support.";
       } else if (err?.code === "auth/operation-not-allowed") {
-        msg = "SMS Region Blocked: In Firebase Console -> Authentication -> Settings -> SMS Region Policy, allow India (+91), or add your number under 'Phone numbers for testing'.";
+        msg = "SMS delivery is currently unavailable for this phone number. Please check the number and try again.";
       } else if (err?.code === "auth/quota-exceeded") {
-        msg = "Firebase SMS daily quota exceeded.";
+        msg = "SMS daily limit reached. Please try again later or contact support.";
       } else if (err?.code === "auth/unauthorized-domain") {
-        msg = "Domain not authorized in Firebase Console (Authentication -> Settings -> Authorized domains).";
+        msg = "Domain authorization issue. Please contact support.";
       }
       setErrorMessage(msg);
     } finally {
@@ -159,7 +159,7 @@ export default function TenantLoginPage() {
               Tenant Login
             </h1>
             <p className="text-xs text-gray-300">
-              Log in with your registered mobile number using Firebase SMS OTP.
+              Log in with your registered mobile number using SMS verification.
             </p>
           </div>
 
@@ -220,11 +220,11 @@ export default function TenantLoginPage() {
                   {sending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Sending Firebase OTP...</span>
+                      <span>Sending Verification Code...</span>
                     </>
                   ) : (
                     <>
-                      <span>Send Firebase OTP</span>
+                      <span>Send Verification Code</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -289,7 +289,7 @@ export default function TenantLoginPage() {
                   {verifying ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Verifying Firebase OTP...</span>
+                      <span>Verifying Code...</span>
                     </>
                   ) : (
                     <>
