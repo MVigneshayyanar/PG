@@ -1,27 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f1f7f2;
+  --foreground: #072e18;
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+  
+  --pine-900: #07361b;
+  --tangerine-500: #ff6b00;
+  --sage-100: #e3f0e6;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: #0c331a;
+  background-color: #f1f7f2;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+
+/* Organic Sage & Crisp White Card Styling */
+.card-theme {
+  background: #ffffff;
+  border: 1px solid #d8ebd9;
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(7, 54, 27, 0.04), 0 1px 2px -1px rgba(7, 54, 27, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-theme:hover {
+  border-color: #b3dfb8;
+  box-shadow: 0 12px 24px -6px rgba(7, 54, 27, 0.08), 0 4px 8px -4px rgba(7, 54, 27, 0.04);
+  transform: translateY(-2px);
+}
+
+/* Mint Sage Hero Pill */
+.badge-sage {
+  background-color: #dcf2e1;
+  color: #07361b;
+  border: 1px solid #bce6c5;
+}
+
+/* Tangerine CTA Button */
+.btn-tangerine {
+  background-color: #ff6b00;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 9999px;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.25);
+}
+
+.btn-tangerine:hover {
+  background-color: #eb5e00;
+  box-shadow: 0 6px 16px rgba(255, 107, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Pine Primary Button */
+.btn-pine {
+  background-color: #07361b;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 9999px;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-pine:hover {
+  background-color: #0c4d28;
+  transform: translateY(-1px);
+}
+
+/* Custom organic scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #eaf3ec;
+}
+::-webkit-scrollbar-thumb {
+  background: #b9dac0;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8ec397;
 }

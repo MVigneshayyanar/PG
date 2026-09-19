@@ -34,3 +34,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Environment variables (all variants)
+.env
+.env.local
+.env.development
+.env.production
+
+# Firebase service account secrets
+serviceAccountKey.json
+firebase-adminsdk*.json
+
+# Editor artifacts
+.vscode/settings.json
+.idea/
+Thumbs.db
