@@ -656,12 +656,7 @@ export default function HomePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                     {pg.vacantRooms && pg.vacantRooms.length > 0 ? (
                       pg.vacantRooms.map((r) => {
-                        const maxAmenities = 3;
-                        const visibleAmenities = r.amenities?.slice(0, maxAmenities) || [];
-                        const extraAmenitiesCount = Math.max(
-                          0,
-                          (r.amenities?.length || 0) - maxAmenities
-                        );
+                        const amenities = r.amenities || [];
 
                         return (
                           <div
@@ -692,27 +687,20 @@ export default function HomePage() {
                               </span>
                             </div>
 
-                            {/* Bottom row: Amenities list (Uniform 1 row with clean chips) */}
-                            <div className="pt-2 border-t border-[#d8ebd9] flex items-center gap-1 overflow-hidden">
-                              {visibleAmenities.map((am) => (
-                                <span
-                                  key={am}
-                                  className="inline-flex items-center gap-1 rounded-full bg-white border border-[#c8e4ce] px-2 py-0.5 text-[10px] font-medium text-[#07361b] whitespace-nowrap"
-                                >
-                                  <Sparkles className="h-2 w-2 text-[#ff6b00]" />
-                                  <span>{am}</span>
-                                </span>
-                              ))}
-
-                              {extraAmenitiesCount > 0 && (
-                                <span
-                                  title={r.amenities?.join(", ")}
-                                  className="inline-flex items-center rounded-full bg-[#dcf2e1] border border-[#bce6c5] px-1.5 py-0.5 text-[9px] font-bold text-[#07361b] whitespace-nowrap cursor-help shrink-0"
-                                >
-                                  +{extraAmenitiesCount} more
-                                </span>
-                              )}
-                            </div>
+                            {/* Bottom row: Amenities list (Show all amenities fully) */}
+                            {amenities.length > 0 && (
+                              <div className="pt-2 border-t border-[#d8ebd9] flex items-center gap-1 flex-wrap">
+                                {amenities.map((am) => (
+                                  <span
+                                    key={am}
+                                    className="inline-flex items-center gap-1 rounded-full bg-white border border-[#c8e4ce] px-2 py-0.5 text-[10px] font-medium text-[#07361b] whitespace-nowrap"
+                                  >
+                                    <Sparkles className="h-2 w-2 text-[#ff6b00]" />
+                                    <span>{am}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })
