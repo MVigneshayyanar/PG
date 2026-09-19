@@ -17,7 +17,7 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { Room, SharingCategory } from "@/types";
 
-export const AVAILABLE_AMENITIES = [
+const AVAILABLE_AMENITIES = [
   { id: "Bed", label: "Bed / Cot", icon: "🛏️" },
   { id: "Study Table", label: "Table / Desk", icon: "🪑" },
   { id: "Cupboard", label: "Cupboard / Wardrobe", icon: "🚪" },

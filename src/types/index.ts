@@ -164,6 +164,8 @@ export interface Ticket {
 }
 
 export interface OwnerDashboardStats {
+  totalOccupied?: number;
+  occupancyRate?: number;
   totalRooms: number;
   totalCapacity: number;
   totalTenants: number;

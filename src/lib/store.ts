@@ -9,6 +9,7 @@ import {
   Ticket,
   OwnerDashboardStats,
   TicketStatus,
+  SharingCategory,
 } from "@/types";
 import { isFirebaseConfigured, db } from "./firebase/client";
 import {
@@ -928,8 +929,8 @@ export async function getPayments(pgId?: string, month = CURRENT_MONTH): Promise
           roomId: t.roomId,
           roomNumber: t.roomNumber,
           month: month,
-          baseRent: t.rentAmount,
-          amount: t.rentAmount,
+          baseRent: t.rentAmount || 0,
+          amount: t.rentAmount || 0,
           status: isPast ? "paid" : "unpaid",
           paidAt: isPast ? `${month}-05T10:00:00Z` : null,
           razorpayPaymentId: isPast ? `pay_verified_${month}_${t.id.slice(-4)}` : null,
