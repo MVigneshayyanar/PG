@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const { secret } = await req.json();
 
     // Simple guard — only the admin can trigger this
-    if (secret !== "ADMIN_PURGE_9626855406") {
+    if (secret !== "ADMIN_PURGE_6381347842") {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 

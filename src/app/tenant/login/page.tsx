@@ -91,7 +91,17 @@ export default function TenantLoginPage() {
         body: JSON.stringify({ phoneNumber: clean, idToken, otp }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error("Non-JSON response from server:", text);
+        if (res.status === 504 || text.includes("Gateway Timeout")) {
+          throw new Error("Server timeout (504). Please try again.");
+        }
+        throw new Error(`Server error (${res.status}). Please try again.`);
+      }
       if (data.success) {
         localStorage.setItem(
           "tenant_session",

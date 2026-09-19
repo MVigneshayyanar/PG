@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
     if (rawSession) {
       try {
         const session = JSON.parse(rawSession);
-        if (session.role !== "admin" && session.phone !== "9626855406") {
+        if (session.role !== "admin" && session.phone !== "6381347842") {
           // If not admin, still allow viewing if they want or notify
         }
       } catch (e) {
@@ -163,11 +163,10 @@ export default function AdminDashboardPage() {
         {/* Toast alert */}
         {toastMessage && (
           <div
-            className={`rounded-2xl p-4 text-xs font-semibold flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
-              toastMessage.type === "success"
+            className={`rounded-2xl p-4 text-xs font-semibold flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${toastMessage.type === "success"
                 ? "bg-[#dcf2e1] border border-[#bce6c5] text-[#07361b]"
                 : "bg-rose-50 border border-rose-200 text-rose-800"
-            }`}
+              }`}
           >
             <div className="flex items-center gap-2">
               {toastMessage.type === "success" ? (
@@ -231,59 +230,52 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
             <button
               onClick={() => setFilterTab("pending")}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                filterTab === "pending"
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${filterTab === "pending"
                   ? "bg-[#ff6b00] text-white shadow-xs"
                   : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
-              }`}
+                }`}
             >
               <span>Pending Review</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                filterTab === "pending" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-900"
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filterTab === "pending" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-900"
+                }`}>
                 {counts.pending}
               </span>
             </button>
 
             <button
               onClick={() => setFilterTab("approved")}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                filterTab === "approved"
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${filterTab === "approved"
                   ? "bg-[#07361b] text-white shadow-xs"
                   : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
-              }`}
+                }`}
             >
               <span>Approved PGs</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                filterTab === "approved" ? "bg-white/20 text-white" : "bg-[#dcf2e1] text-[#07361b]"
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filterTab === "approved" ? "bg-white/20 text-white" : "bg-[#dcf2e1] text-[#07361b]"
+                }`}>
                 {counts.approved}
               </span>
             </button>
 
             <button
               onClick={() => setFilterTab("rejected")}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                filterTab === "rejected"
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${filterTab === "rejected"
                   ? "bg-rose-700 text-white shadow-xs"
                   : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
-              }`}
+                }`}
             >
               <span>Rejected</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                filterTab === "rejected" ? "bg-white/20 text-white" : "bg-rose-100 text-rose-900"
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filterTab === "rejected" ? "bg-white/20 text-white" : "bg-rose-100 text-rose-900"
+                }`}>
                 {counts.rejected}
               </span>
             </button>
 
             <button
               onClick={() => setFilterTab("all")}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                filterTab === "all"
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${filterTab === "all"
                   ? "bg-[#07361b] text-white shadow-xs"
                   : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
-              }`}
+                }`}
             >
               All Applications ({counts.total})
             </button>
