@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenants, addTenant, getPG } from "@/lib/store";
+import { getTenants, addTenant, getPG, getRooms } from "@/lib/store";
 
 export async function GET(req: NextRequest) {
   try {
@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
-    const pg = await getPG(pgId);
+    const rooms = await getRooms();
+    const targetRoom = rooms.find((r) => r.id === roomId);
+    const resolvedPgId = targetRoom?.pgId || pgId;
+    const pg = await getPG(resolvedPgId);
 
     // Minimal fields per spec: name + phoneNumber + assigned room
     const newTenant = await addTenant({
@@ -44,10 +47,10 @@ export async function POST(req: NextRequest) {
       message: "Tenant added successfully with current month rent marked as pending.",
       tenant: newTenant,
     }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in POST /api/tenants:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to add tenant" },
+      { success: false, error: error?.message || "Failed to add tenant" },
       { status: 500 }
     );
   }

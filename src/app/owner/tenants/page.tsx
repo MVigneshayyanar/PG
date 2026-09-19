@@ -75,7 +75,18 @@ function TenantsManagerContent() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [tRes, rRes] = await Promise.all([fetch("/api/tenants"), fetch("/api/rooms")]);
+      let pgId = "";
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("pgm_session");
+          if (raw) {
+            const sess = JSON.parse(raw);
+            pgId = sess.user?.pgId || sess.pgId || "";
+          }
+        } catch (_) {}
+      }
+      const query = pgId ? `?pgId=${pgId}` : "";
+      const [tRes, rRes] = await Promise.all([fetch(`/api/tenants${query}`), fetch(`/api/rooms${query}`)]);
       const tData = await tRes.json();
       const rData = await rRes.json();
 
@@ -129,6 +140,16 @@ function TenantsManagerContent() {
           name: addForm.name,
           phoneNumber: addForm.phoneNumber,
           roomId: addForm.roomId,
+          pgId: (() => {
+            try {
+              const raw = localStorage.getItem("pgm_session");
+              if (raw) {
+                const sess = JSON.parse(raw);
+                return sess.user?.pgId || sess.pgId || "";
+              }
+            } catch (_) {}
+            return "";
+          })(),
         }),
       });
 

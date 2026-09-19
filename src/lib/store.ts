@@ -927,11 +927,46 @@ export async function getTenants(pgId?: string): Promise<Tenant[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
   const targetPgId = pgId || (store.pgs[0]?.id || "");
-  const tenants = store.tenants.filter(
-    (t) => t.pgId === targetPgId && t.active !== false
-  );
 
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await withTimeout(getDocs(collection(db, "tenants")), 2500);
+      if (!snap.empty) {
+        const firestoreTenants = snap.docs.map((d) => d.data() as Tenant);
+        for (const ft of firestoreTenants) {
+          const idx = store.tenants.findIndex((t) => t.id === ft.id);
+          if (idx >= 0) store.tenants[idx] = ft;
+          else store.tenants.push(ft);
+        }
+      }
+    } catch (e) {
+      console.warn("Firestore getTenants error:", e);
+    }
+  }
+
+  // Self-heal: link tenant to room's pgId if mapped to a room
   const roomsMap = new Map(store.rooms.map((r) => [r.id, r]));
+  for (const t of store.tenants) {
+    if (t.roomId) {
+      const parentRoom = roomsMap.get(t.roomId);
+      if (parentRoom && parentRoom.pgId && t.pgId !== parentRoom.pgId) {
+        t.pgId = parentRoom.pgId;
+        if (isFirebaseConfigured && db) {
+          updateDoc(doc(db, "tenants", t.id), { pgId: parentRoom.pgId }).catch(() => {});
+        }
+      }
+    }
+  }
+
+  // Return tenants belonging to targetPgId (either directly or via their room)
+  const tenants = targetPgId
+    ? store.tenants.filter(
+        (t) =>
+          (t.pgId === targetPgId || (t.roomId && roomsMap.get(t.roomId)?.pgId === targetPgId)) &&
+          t.active !== false
+      )
+    : store.tenants.filter((t) => t.active !== false);
+
   return tenants.map((t) => {
     const room = roomsMap.get(t.roomId);
     return {
@@ -961,9 +996,11 @@ export async function addTenant(
   }
 
   const room = store.rooms.find((r) => r.id === tenantData.roomId);
+  const realPgId = room?.pgId || tenantData.pgId;
 
   const newTenant: Tenant = {
     ...tenantData,
+    pgId: realPgId,
     phoneNumber: cleanPhone,
     id: `tenant-${Date.now()}`,
     roomNumber: room?.roomNumber || "N/A",
@@ -1022,41 +1059,64 @@ export async function getPayments(pgId?: string, month = CURRENT_MONTH): Promise
   const store = getStore();
   const targetPgId = pgId || (store.pgs[0]?.id || "");
 
-  const existingForMonth = store.payments.filter(
-    (p) => p.pgId === targetPgId && (!month || p.month === month)
-  );
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await withTimeout(getDocs(collection(db, "payments")), 2500);
+      if (!snap.empty) {
+        const firestorePayments = snap.docs.map((d) => d.data() as Payment);
+        for (const fp of firestorePayments) {
+          const idx = store.payments.findIndex((p) => p.id === fp.id);
+          if (idx >= 0) store.payments[idx] = fp;
+          else store.payments.push(fp);
+        }
+      }
+    } catch (e) {
+      console.warn("Firestore getPayments error:", e);
+    }
+  }
 
-  // If a specific month is requested and no payments exist in store yet,
-  // generate standard rent dues for active tenants active in that month
-  if (month && existingForMonth.length === 0) {
-    const pgTenants = store.tenants.filter((t) => t.pgId === targetPgId && t.active !== false);
-    for (const t of pgTenants) {
-      const joinMonth = t.joinedAt ? t.joinedAt.slice(0, 7) : "2026-01";
-      if (joinMonth <= month) {
-        const isPast = month < CURRENT_MONTH;
+  // Get active tenants for this PG
+  const activeTenants = await getTenants(targetPgId);
+  const tenantsMap = new Map(store.tenants.map((t) => [t.id, t]));
+
+  // Auto-generate payment record for any active tenant missing one in the selected month
+  if (month && targetPgId) {
+    for (const t of activeTenants) {
+      const hasPayment = store.payments.some(
+        (p) => p.tenantId === t.id && p.month === month
+      );
+      if (!hasPayment) {
         const genPayment: Payment = {
-          id: `pay-gen-${t.id}-${month}`,
+          id: `pay-${t.id}-${month}`,
           tenantId: t.id,
           tenantName: t.name,
           phoneNumber: t.phoneNumber,
-          pgId: targetPgId,
-          roomId: t.roomId,
           roomNumber: t.roomNumber,
-          month: month,
-          baseRent: t.rentAmount || 0,
-          amount: t.rentAmount || 0,
-          status: isPast ? "paid" : "unpaid",
-          paidAt: isPast ? `${month}-05T10:00:00Z` : null,
-          razorpayPaymentId: isPast ? `pay_verified_${month}_${t.id.slice(-4)}` : null,
-          createdAt: `${month}-01T00:00:00Z`,
+          pgId: t.pgId || targetPgId,
+          roomId: t.roomId,
+          month,
+          baseRent: t.rentAmount || 8000,
+          ebAmount: 0,
+          amount: t.rentAmount || 8000,
+          status: "unpaid",
+          createdAt: new Date().toISOString(),
         };
         store.payments.push(genPayment);
+        if (isFirebaseConfigured && db) {
+          setDoc(doc(db, "payments", genPayment.id), genPayment).catch(() => {});
+        }
       }
     }
-    return store.payments.filter((p) => p.pgId === targetPgId && p.month === month);
   }
 
-  return existingForMonth;
+  return store.payments.filter((p) => {
+    const parentTenant = tenantsMap.get(p.tenantId);
+    const matchesPg =
+      !targetPgId ||
+      p.pgId === targetPgId ||
+      parentTenant?.pgId === targetPgId;
+    return matchesPg && (!month || p.month === month);
+  });
 }
 
 export async function getTenantPayments(tenantId: string): Promise<Payment[]> {
