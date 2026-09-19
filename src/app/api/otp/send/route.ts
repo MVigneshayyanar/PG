@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,12 +13,9 @@ export async function POST(req: NextRequest) {
 
     const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
 
-    // In production, integrate a real OTP provider here (e.g. MSG91, Twilio, Firebase Auth).
-    console.log(`[OTP SERVICE] Dispatching OTP to +91 ${cleanPhone}`);
-
     return NextResponse.json({
       success: true,
-      message: `OTP sent successfully to +91 ${cleanPhone}. Please check your messages.`,
+      message: `Please use the Firebase client SDK to receive your official SMS OTP at +91 ${cleanPhone}.`,
       phoneNumber: cleanPhone,
     });
   } catch (error) {

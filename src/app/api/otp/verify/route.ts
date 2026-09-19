@@ -1,23 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { getTenantByPhone } from "@/lib/store";
-import { createTenantCustomToken } from "@/lib/firebase/admin";
+import { adminAuth, createTenantCustomToken } from "@/lib/firebase/admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phoneNumber, otp } = await req.json();
+    const { phoneNumber, otp, idToken } = await req.json();
 
-    if (!phoneNumber || !otp) {
+    if (!phoneNumber) {
       return NextResponse.json(
-        { success: false, error: "Phone number and OTP are required" },
+        { success: false, error: "Phone number is required" },
         { status: 400 }
       );
     }
 
     const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
 
-    // In production, verify OTP against your OTP provider (e.g. MSG91, Twilio, Firebase Auth).
-    // Replace the length check below with a real token validation call.
-    if (!otp || otp.trim().length < 6) {
+    // Cryptographically verify the Firebase Auth ID Token if provided
+    if (idToken && adminAuth) {
+      try {
+        const decoded = await adminAuth.verifyIdToken(idToken);
+        const tokenPhone = (decoded.phone_number || "").replace(/[^0-9]/g, "").slice(-10);
+        if (tokenPhone && tokenPhone !== cleanPhone) {
+          return NextResponse.json(
+            { success: false, error: "Phone number does not match the verified Firebase token." },
+            { status: 403 }
+          );
+        }
+      } catch (err: any) {
+        console.error("Firebase Admin ID token verification error:", err);
+        return NextResponse.json(
+          { success: false, error: "Firebase Phone verification token is invalid or expired." },
+          { status: 401 }
+        );
+      }
+    } else if (!otp || otp.trim().length < 6) {
       return NextResponse.json(
         { success: false, error: "Invalid OTP. Please enter the 6-digit verification code." },
         { status: 401 }
@@ -48,7 +64,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate custom Firebase Auth token using Admin SDK (or fallback mock JWT)
+    // Generate custom Firebase Auth token using Admin SDK
     const customToken = await createTenantCustomToken(tenant.id, {
       phoneNumber: tenant.phoneNumber,
       pgId: tenant.pgId,
@@ -57,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Phone verified successfully",
+      message: "Phone verified successfully via Firebase",
       token: customToken,
       tenant,
     });

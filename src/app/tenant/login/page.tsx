@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,8 +9,11 @@ import {
   Lock,
   RotateCcw,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { sendFirebaseOtp, confirmFirebaseOtp } from "@/lib/firebase/phoneAuth";
+import type { ConfirmationResult } from "firebase/auth";
 
 export default function TenantLoginPage() {
   const router = useRouter();
@@ -21,10 +24,12 @@ export default function TenantLoginPage() {
   const [verifying, setVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toastNotice, setToastNotice] = useState<string | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMessage(null);
+    setToastNotice(null);
 
     const clean = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
     if (clean.length < 10) {
@@ -34,22 +39,21 @@ export default function TenantLoginPage() {
 
     try {
       setSending(true);
-      const res = await fetch("/api/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: clean }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setOtpSent(true);
-        setToastNotice(data.message || "OTP sent! Please enter the verification code.");
-      } else {
-        setErrorMessage(data.error || "Failed to send OTP");
+      const confirmation = await sendFirebaseOtp(clean, "tenant-recaptcha-container");
+      setConfirmationResult(confirmation);
+      setOtpSent(true);
+      setToastNotice(`SMS verification OTP sent via Firebase to +91 ${clean}.`);
+    } catch (err: any) {
+      console.error("Firebase send OTP error:", err);
+      let msg = err?.message || "Failed to send verification SMS.";
+      if (err?.code === "auth/invalid-phone-number") {
+        msg = "The phone number format is invalid.";
+      } else if (err?.code === "auth/quota-exceeded") {
+        msg = "Firebase SMS daily quota exceeded.";
+      } else if (err?.code === "auth/unauthorized-domain") {
+        msg = "Domain not authorized in Firebase Console (Authentication -> Settings -> Authorized domains).";
       }
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("Network error while sending OTP");
+      setErrorMessage(msg);
     } finally {
       setSending(false);
     }
@@ -65,12 +69,22 @@ export default function TenantLoginPage() {
       return;
     }
 
+    if (!confirmationResult) {
+      setErrorMessage("No active OTP session. Please request a new verification code.");
+      setOtpSent(false);
+      return;
+    }
+
     try {
       setVerifying(true);
+      // 1. Confirm code with Firebase Auth
+      const { idToken } = await confirmFirebaseOtp(confirmationResult, otp);
+
+      // 2. Pass verified idToken to backend to confirm tenancy status
       const res = await fetch("/api/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: clean, otp }),
+        body: JSON.stringify({ phoneNumber: clean, idToken, otp }),
       });
 
       const data = await res.json();
@@ -87,17 +101,26 @@ export default function TenantLoginPage() {
       } else {
         setErrorMessage(data.error || "Verification failed");
       }
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("Network error during verification");
+    } catch (err: any) {
+      console.error("Firebase OTP verification error:", err);
+      let msg = err?.message || "Invalid OTP code.";
+      if (err?.code === "auth/invalid-verification-code") {
+        msg = "Incorrect OTP code. Please check the SMS and enter the 6 digits.";
+      } else if (err?.code === "auth/code-expired") {
+        msg = "This verification code has expired. Please request a new one.";
+      }
+      setErrorMessage(msg);
     } finally {
       setVerifying(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#072e18]">
       <Navbar />
+
+      {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
+      <div id="tenant-recaptcha-container"></div>
 
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md space-y-6">
@@ -109,14 +132,14 @@ export default function TenantLoginPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
               Tenant Login
             </h1>
-            <p className="text-xs text-gray-400">
-              Log in with your registered mobile number to access your dashboard.
+            <p className="text-xs text-gray-300">
+              Log in with your registered mobile number using Firebase SMS OTP.
             </p>
           </div>
 
           {/* Toast Notice */}
           {toastNotice && (
-            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-3.5 text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
+            <div className="rounded-2xl bg-emerald-500/20 border border-emerald-500/40 p-3.5 text-xs text-emerald-200 flex items-center gap-2 animate-in fade-in">
               <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
               <span>{toastNotice}</span>
             </div>
@@ -124,22 +147,22 @@ export default function TenantLoginPage() {
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="rounded-2xl bg-rose-500/10 border border-rose-500/30 p-3.5 text-xs text-rose-300">
+            <div className="rounded-2xl bg-rose-500/20 border border-rose-500/40 p-3.5 text-xs text-rose-200">
               {errorMessage}
             </div>
           )}
 
           {/* Main Form Card */}
-          <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-5 shadow-2xl">
+          <div className="bg-white/10 backdrop-blur-md border border-white/15 p-6 sm:p-8 rounded-3xl space-y-5 shadow-2xl">
             {!otpSent ? (
               /* Step 1: Enter Phone Number */
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                  <label className="block text-xs font-medium text-gray-200 mb-1.5">
                     Registered Mobile Number
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-3 text-sm text-gray-400 font-bold font-mono">
+                    <span className="absolute left-3.5 top-3 text-sm text-emerald-300 font-bold font-mono">
                       +91
                     </span>
                     <input
@@ -153,7 +176,7 @@ export default function TenantLoginPage() {
                       className="w-full rounded-xl bg-gray-900/90 border border-white/10 pl-14 pr-4 py-2.5 text-sm text-white font-mono placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1">
+                  <p className="text-[11px] text-gray-300 mt-1">
                     Your number must be registered by your PG owner.
                   </p>
                 </div>
@@ -166,11 +189,11 @@ export default function TenantLoginPage() {
                   {sending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Sending OTP...</span>
+                      <span>Sending Firebase OTP...</span>
                     </>
                   ) : (
                     <>
-                      <span>Send OTP</span>
+                      <span>Send Firebase OTP</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -180,7 +203,7 @@ export default function TenantLoginPage() {
               /* Step 2: Enter OTP */
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">
+                  <span className="text-gray-300">
                     Verifying +91 <strong>{phoneNumber}</strong>
                   </span>
                   <button
@@ -196,7 +219,7 @@ export default function TenantLoginPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                  <label className="block text-xs font-medium text-gray-200 mb-1.5">
                     Enter 6-Digit OTP
                   </label>
                   <div className="relative">
@@ -207,13 +230,24 @@ export default function TenantLoginPage() {
                       maxLength={6}
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter OTP"
+                      placeholder="Enter 6-digit OTP"
                       className="w-full rounded-xl bg-gray-900/90 border border-emerald-500/50 pl-10 pr-4 py-2.5 text-center text-lg font-mono tracking-widest text-white focus:border-emerald-400 focus:outline-none"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Enter the 6-digit OTP sent to your mobile number.
-                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-[11px] text-gray-300">
+                      Enter the 6-digit code received on your phone.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={sending}
+                      onClick={() => handleSendOtp()}
+                      className="text-[11px] font-bold text-amber-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Resend SMS</span>
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -224,7 +258,7 @@ export default function TenantLoginPage() {
                   {verifying ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Verifying...</span>
+                      <span>Verifying Firebase OTP...</span>
                     </>
                   ) : (
                     <>
