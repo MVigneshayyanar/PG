@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
     if (rawSession) {
       try {
         const session = JSON.parse(rawSession);
-        if (session.role !== "admin" && session.phone !== "6381347842") {
+        if (session.role !== "admin" && session.phone !== "9626855406" && session.phone !== "9626855406" && session.phone !== "9626855406") {
           // If not admin, still allow viewing if they want or notify
         }
       } catch (e) {
@@ -151,11 +151,11 @@ export default function AdminDashboardPage() {
               <span>Refresh</span>
             </button>
             <a
-              href="tel:6381347842"
+              href="tel:9626855406"
               className="inline-flex items-center gap-2 rounded-full bg-[#07361b] hover:bg-[#052814] px-4 py-2 text-xs font-bold text-white shadow-xs transition-all"
             >
               <PhoneCall className="h-3.5 w-3.5 text-[#ff6b00]" />
-              <span>Admin Hotline: 6381347842</span>
+              <span>Admin Hotline: 9626855406</span>
             </a>
           </div>
         </div>
@@ -164,8 +164,8 @@ export default function AdminDashboardPage() {
         {toastMessage && (
           <div
             className={`rounded-2xl p-4 text-xs font-semibold flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${toastMessage.type === "success"
-                ? "bg-[#dcf2e1] border border-[#bce6c5] text-[#07361b]"
-                : "bg-rose-50 border border-rose-200 text-rose-800"
+              ? "bg-[#dcf2e1] border border-[#bce6c5] text-[#07361b]"
+              : "bg-rose-50 border border-rose-200 text-rose-800"
               }`}
           >
             <div className="flex items-center gap-2">
@@ -231,8 +231,8 @@ export default function AdminDashboardPage() {
             <button
               onClick={() => setFilterTab("pending")}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${filterTab === "pending"
-                  ? "bg-[#ff6b00] text-white shadow-xs"
-                  : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
+                ? "bg-[#ff6b00] text-white shadow-xs"
+                : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
                 }`}
             >
               <span>Pending Review</span>
@@ -245,8 +245,8 @@ export default function AdminDashboardPage() {
             <button
               onClick={() => setFilterTab("approved")}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${filterTab === "approved"
-                  ? "bg-[#07361b] text-white shadow-xs"
-                  : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
+                ? "bg-[#07361b] text-white shadow-xs"
+                : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
                 }`}
             >
               <span>Approved PGs</span>
@@ -259,8 +259,8 @@ export default function AdminDashboardPage() {
             <button
               onClick={() => setFilterTab("rejected")}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${filterTab === "rejected"
-                  ? "bg-rose-700 text-white shadow-xs"
-                  : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
+                ? "bg-rose-700 text-white shadow-xs"
+                : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
                 }`}
             >
               <span>Rejected</span>
@@ -273,8 +273,8 @@ export default function AdminDashboardPage() {
             <button
               onClick={() => setFilterTab("all")}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${filterTab === "all"
-                  ? "bg-[#07361b] text-white shadow-xs"
-                  : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
+                ? "bg-[#07361b] text-white shadow-xs"
+                : "bg-[#f8fbf8] text-[#33613b] hover:bg-[#dcf2e1]"
                 }`}
             >
               All Applications ({counts.total})

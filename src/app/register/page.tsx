@@ -125,11 +125,11 @@ export default function RegisterPGPage() {
                   For urgent approval or queries, contact admin:
                 </span>
                 <a
-                  href="tel:6381347842"
+                  href="tel:9626855406"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-[#07361b] bg-[#dcf2e1] hover:bg-[#c8e4ce] px-3 py-1 rounded-lg transition-colors"
                 >
                   <PhoneCall className="h-3.5 w-3.5 text-[#1e7c3b]" />
-                  <span>Call 6381347842</span>
+                  <span>Call 9626855406</span>
                 </a>
               </div>
             </div>
