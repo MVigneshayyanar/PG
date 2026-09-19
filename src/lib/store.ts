@@ -400,8 +400,8 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
     throw new Error("Invalid OTP. Please enter the 6-digit verification code.");
   }
 
-  // 1. Check Super Admin Phone (6381347842 or 9626855406) - Instant check without DB delay
-  if (cleanPhone === "6381347842" || cleanPhone === "9626855406") {
+  // 1. Check Super Admin Phone (6381347842 or 6381347842) - Instant check without DB delay
+  if (cleanPhone === "6381347842" || cleanPhone === "6381347842") {
     return {
       role: "admin" as const,
       user: {
