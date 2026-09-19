@@ -48,6 +48,8 @@ export default function UnifiedLoginPage() {
       let msg = err?.message || "Failed to dispatch verification code via SMS.";
       if (err?.code === "auth/invalid-phone-number") {
         msg = "The phone number format is invalid. Please check the digits.";
+      } else if (err?.code === "auth/operation-not-allowed") {
+        msg = "SMS Region Blocked: In Firebase Console -> Authentication -> Settings -> SMS Region Policy, allow India (+91), or add your number under 'Phone numbers for testing'.";
       } else if (err?.code === "auth/quota-exceeded") {
         msg = "SMS daily quota exceeded for this Firebase project. Contact admin.";
       } else if (err?.code === "auth/unauthorized-domain") {
