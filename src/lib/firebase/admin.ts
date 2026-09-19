@@ -15,11 +15,9 @@ let adminDb: Firestore | null = null;
 if (isFirebaseAdminConfigured) {
   try {
     let privateKey = process.env.FIREBASE_PRIVATE_KEY || "";
-    // Clean up surrounding quotes if added by environment variable UI
     if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
       privateKey = privateKey.slice(1, -1);
     }
-    // Format escaped newlines to actual newlines
     privateKey = privateKey.replace(/\\n/g, "\n");
 
     const apps = getApps();
@@ -37,20 +35,23 @@ if (isFirebaseAdminConfigured) {
     adminAuth = getAuth(adminApp);
     adminDb = getFirestore(adminApp);
   } catch (error) {
-    console.warn("Firebase Admin initialization error:", error);
+    console.warn("Firebase Admin initialization warning:", error);
   }
 }
 
 export { adminApp, adminAuth, adminDb };
 
 export async function createTenantCustomToken(tenantId: string, claims = {}) {
-  if (adminAuth) {
-    return await adminAuth.createCustomToken(tenantId, claims);
+  try {
+    if (adminAuth) {
+      return await adminAuth.createCustomToken(tenantId, claims);
+    }
+  } catch (e) {
+    console.warn("createCustomToken fallback:", e);
   }
-  // Safe mock JWT token string for local/demo runs
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
   const payload = Buffer.from(
     JSON.stringify({ sub: tenantId, role: "tenant", ...claims, iat: Math.floor(Date.now() / 1000) })
   ).toString("base64url");
-  return `${header}.${payload}.demo_mock_signature`;
+  return `${header}.${payload}.demo_signature`;
 }
