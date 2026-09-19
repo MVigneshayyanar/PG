@@ -61,9 +61,11 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pgName: form.pgName,
-          address: form.address,
-          city: form.city,
-          pincode: form.pincode,
+          location: {
+            address: form.address,
+            city: form.city,
+            pincode: form.pincode,
+          },
           gstin: form.gstin,
           ebRatePerUnit: Number(form.ebRatePerUnit) || 15,
           razorpayKeyId: form.razorpayKeyId,
