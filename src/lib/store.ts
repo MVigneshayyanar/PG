@@ -503,7 +503,7 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
 
   // 3. Neither Owner nor active Tenant
   throw new Error(
-    "This mobile number is not registered. PG Owners can register their property via 'Register PG'. Tenants cannot register themselves — your PG owner must add you to your room first."
+    "You are not part of any PG in this platform. If you are a PG owner, please register your property. If you are a resident, please contact your PG owner to add your mobile number."
   );
 }
 

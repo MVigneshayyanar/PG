@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error:
-            "This number is not registered as a tenant. Please ask your PG owner to add your number first.",
+            "You are not part of any PG in this platform. Please contact your PG owner to add your number.",
         },
         { status: 404 }
       );

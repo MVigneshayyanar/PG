@@ -173,7 +173,7 @@ export default function UnifiedLoginPage() {
           {errorMessage && (
             <div
               className={`rounded-2xl p-4 text-xs flex flex-col gap-2.5 ${
-                errorMessage.includes("6381347842") || errorMessage.includes("not approved yet")
+                errorMessage.includes("6381347842") || errorMessage.includes("not approved yet") || errorMessage.includes("not part of any PG")
                   ? "bg-amber-50 border border-amber-200 text-amber-950"
                   : "bg-rose-50 border border-rose-200 text-rose-800"
               }`}
@@ -181,16 +181,31 @@ export default function UnifiedLoginPage() {
               <div className="flex items-start gap-2.5">
                 <AlertCircle
                   className={`h-5 w-5 shrink-0 mt-0.5 ${
-                    errorMessage.includes("6381347842") ? "text-amber-600" : "text-rose-600"
+                    errorMessage.includes("6381347842") || errorMessage.includes("not part of any PG")
+                      ? "text-amber-600"
+                      : "text-rose-600"
                   }`}
                 />
                 <div className="leading-relaxed">
-                  {errorMessage.includes("6381347842") && (
+                  {errorMessage.includes("not part of any PG") && (
+                    <p className="font-bold text-amber-900 mb-0.5">Not Registered</p>
+                  )}
+                  {errorMessage.includes("6381347842") && !errorMessage.includes("not part of any PG") && (
                     <p className="font-bold text-amber-900 mb-0.5">Verification Required</p>
                   )}
                   <p>{errorMessage}</p>
                 </div>
               </div>
+
+              {errorMessage.includes("not part of any PG") && (
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ff6b00] hover:bg-[#e05e00] text-white px-4 py-2.5 font-bold transition-colors w-full text-center shadow-xs"
+                >
+                  <span>Register Your PG Property</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
 
               {errorMessage.includes("6381347842") && (
                 <a
