@@ -220,7 +220,7 @@ export default function HomePage() {
             <div ref={searchContainerRef} className="pt-2 max-w-2xl mx-auto relative">
               <form
                 onSubmit={handleSearchSubmit}
-                className="flex flex-col sm:flex-row items-center gap-2 bg-white p-2 rounded-full border border-[#c8e4ce] shadow-md shadow-[#07361b]/5 focus-within:border-[#07361b] focus-within:ring-2 focus-within:ring-[#07361b]/15 transition-all"
+                className="flex flex-col sm:flex-row items-center gap-2 bg-white p-2 rounded-2xl sm:rounded-full border border-[#c8e4ce] shadow-md shadow-[#07361b]/5 focus-within:border-[#07361b] focus-within:ring-2 focus-within:ring-[#07361b]/15 transition-all"
               >
                 <div className="relative flex-1 w-full flex items-center pl-3">
                   <Search className="h-4 w-4 text-[#1e7c3b] shrink-0" />
@@ -671,7 +671,7 @@ export default function HomePage() {
                         return (
                           <div
                             key={r.id}
-                            className="h-[148px] rounded-2xl bg-[#edf6ee] border border-[#d0e8d5] p-3.5 text-xs text-[#07361b] flex flex-col justify-between hover:border-[#9fcfab] hover:bg-[#e4f2e6] hover:shadow-xs transition-all"
+                            className="min-h-[148px] rounded-2xl bg-[#edf6ee] border border-[#d0e8d5] p-3.5 text-xs text-[#07361b] flex flex-col justify-between hover:border-[#9fcfab] hover:bg-[#e4f2e6] hover:shadow-xs transition-all"
                           >
                             {/* Top row: Room Number, Sharing & Free Beds */}
                             <div className="flex items-center justify-between gap-1.5">

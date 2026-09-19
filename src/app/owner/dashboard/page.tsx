@@ -467,7 +467,7 @@ export default function OwnerDashboardPage() {
         ) : (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {/* Rent Collected */}
               <div className="bg-[#dcf2e1] p-5 rounded-3xl border border-[#bce6c5] shadow-xs space-y-1">
                 <div className="flex items-center justify-between">
@@ -697,7 +697,7 @@ export default function OwnerDashboardPage() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                          <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
                             No paid transactions for this month yet.
                           </td>
                         </tr>

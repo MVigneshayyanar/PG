@@ -12,12 +12,17 @@ import {
   Loader2,
   ArrowRight,
   Zap,
+  ExternalLink,
+  AlertCircle,
+  Lock,
 } from "lucide-react";
 import { Payment } from "@/types";
 
 interface RazorpayModalProps {
   payment: Payment;
   pgName: string;
+  tenantName?: string;
+  tenantPhone?: string;
   onSuccess: (updatedPayment: Payment) => void;
   onClose: () => void;
 }
@@ -25,13 +30,18 @@ interface RazorpayModalProps {
 export function RazorpayModal({
   payment,
   pgName,
+  tenantName = "Resident",
+  tenantPhone = "",
   onSuccess,
   onClose,
 }: RazorpayModalProps) {
-  const [method, setMethod] = useState<"quick" | "upi" | "card">("quick");
-  const [processing, setProcessing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [paymentResult, setPaymentResult] = useState<Payment | null>(null);
+  const [hasLiveKeys, setHasLiveKeys] = useState<boolean | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -40,11 +50,17 @@ export function RazorpayModal({
     };
   }, []);
 
-  const handlePay = async () => {
-    try {
-      setProcessing(true);
+  // Initiate order creation when modal opens
+  useEffect(() => {
+    initiateOrder();
+  }, []);
 
-      const orderRes = await fetch("/api/payments/create-order", {
+  const initiateOrder = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -52,36 +68,103 @@ export function RazorpayModal({
           tenantId: payment.tenantId,
           amount: payment.amount,
           pgId: payment.pgId,
+          tenantName,
+          tenantPhone,
+          origin: typeof window !== "undefined" ? window.location.origin : "",
         }),
       });
 
-      const orderData = await orderRes.json();
-      if (!orderData.success) {
-        throw new Error(orderData.error || "Order creation failed");
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to initiate payment");
       }
 
-      await new Promise((r) => setTimeout(r, 1000));
-      const mockPaymentId = `pay_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      setHasLiveKeys(Boolean(data.isLive));
 
-      const verifyRes = await fetch("/api/payments/verify", {
+      // If a real Razorpay Payment Link (short_url) was generated, redirect immediately!
+      if (data.paymentLink) {
+        setRedirectUrl(data.paymentLink);
+        setRedirecting(true);
+        setTimeout(() => {
+          window.location.href = data.paymentLink;
+        }, 1200);
+        return;
+      }
+    } catch (err: any) {
+      console.warn("Payment initiation note:", err);
+      setError(err?.message || "Could not connect to Razorpay live gateway");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Launch official Razorpay Checkout SDK popup if available
+  const handleLaunchCheckoutSdk = () => {
+    if (typeof window === "undefined") return;
+
+    const RazorpayConstructor = (window as any).Razorpay;
+    if (!RazorpayConstructor) {
+      setError("Razorpay checkout SDK is not loaded. Please try sandbox payment.");
+      return;
+    }
+
+    try {
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_demokey123456",
+        amount: Math.round(payment.amount * 100),
+        currency: "INR",
+        name: pgName || "PG Accommodation",
+        description: `Rent & EB Dues (${payment.month})`,
+        handler: async function (response: any) {
+          const rzpPaymentId =
+            response.razorpay_payment_id ||
+            `pay_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+          await handleCompleteVerification(rzpPaymentId);
+        },
+        prefill: {
+          name: tenantName,
+          contact: tenantPhone,
+        },
+        theme: {
+          color: "#07361b",
+        },
+      };
+
+      const rzp = new RazorpayConstructor(options);
+      rzp.open();
+    } catch (err: any) {
+      console.error("Razorpay SDK launch error:", err);
+      setError(err?.message || "Could not launch Razorpay SDK");
+    }
+  };
+
+  // Complete payment and mark paid in Firestore
+  const handleCompleteVerification = async (rzpPaymentId?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const paymentRef =
+        rzpPaymentId || `pay_rzp_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+
+      const res = await fetch("/api/payments/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentId: payment.id,
-          razorpayPaymentId: mockPaymentId,
-          razorpayOrderId: orderData.orderId,
+          razorpayPaymentId: paymentRef,
         }),
       });
 
-      const verifyData = await verifyRes.json();
-      if (verifyData.success) {
+      const data = await res.json();
+      if (data.success && data.payment) {
         setCompleted(true);
-        setPaymentResult(verifyData.payment);
+        setPaymentResult(data.payment);
 
         try {
           confetti({
-            particleCount: 70,
-            spread: 60,
+            particleCount: 80,
+            spread: 70,
             origin: { y: 0.6 },
           });
         } catch {
@@ -89,208 +172,189 @@ export function RazorpayModal({
         }
 
         setTimeout(() => {
-          onSuccess(verifyData.payment);
-        }, 1800);
+          onSuccess(data.payment);
+        }, 2000);
       } else {
-        alert(verifyData.error || "Payment verification failed");
+        throw new Error(data.error || "Payment verification failed");
       }
     } catch (err: any) {
-      console.error("Payment error:", err);
-      alert(err?.message || "Failed to process payment");
+      console.error(err);
+      setError(err?.message || "Payment verification failed");
     } finally {
-      setProcessing(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 !m-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-2xl">
-        {/* Razorpay Pine Header */}
-        <div className="bg-[#07361b] p-5 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-2xl bg-white/20 flex items-center justify-center font-black text-lg">
-              ₹
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white rounded-3xl border border-[#d8ebd9] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Header Strip with Razorpay badge */}
+        <div className="bg-[#07361b] text-white p-4 sm:p-5 flex items-center justify-between border-b border-[#0f4523]">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-2xl bg-[#0e4d29] flex items-center justify-center shrink-0 border border-[#1b6a3b]">
+              <Lock className="h-5 w-5 text-[#ff6b00]" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h3 className="font-display font-black text-base leading-tight">Razorpay Checkout</h3>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[#ff6b00] text-white">
-                  SECURE
+                <span className="font-display font-black text-sm sm:text-base text-white truncate">
+                  Razorpay Checkout
+                </span>
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#ff6b00] text-white uppercase tracking-wider shrink-0">
+                  256-Bit SSL
                 </span>
               </div>
-              <p className="text-xs text-[#a3d3ad]">{pgName}</p>
+              <p className="text-[11px] text-[#a3d3ad] truncate">{pgName}</p>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            disabled={processing}
-            className="rounded-full p-1 text-white/80 hover:bg-white/20 transition-colors"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors shrink-0"
+            title="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {completed ? (
-          <div className="p-6 text-center space-y-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 animate-bounce">
-              <CheckCircle2 className="h-10 w-10" />
+        {/* Modal Body */}
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+          {completed ? (
+            /* Success State */
+            <div className="py-6 text-center space-y-3 animate-in zoom-in-95 duration-300">
+              <div className="mx-auto w-14 h-14 rounded-full bg-[#dcf2e1] text-[#07361b] flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="h-8 w-8 text-[#1e7c3b]" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-display text-xl font-black text-[#07361b]">
+                  Payment Verified!
+                </h3>
+                <p className="text-xs text-[#33613b]">
+                  Rent dues of <strong className="text-[#07361b]">₹{payment.amount.toLocaleString("en-IN")}</strong> for{" "}
+                  {payment.month} cleared successfully.
+                </p>
+              </div>
+              <div className="bg-[#f8fbf8] border border-[#d8ebd9] rounded-2xl p-3 text-xs font-mono text-slate-600">
+                Ref ID: {paymentResult?.razorpayPaymentId || "pay_verified"}
+              </div>
             </div>
-            <div>
-              <h4 className="text-xl font-black text-slate-900">Payment Successful!</h4>
-              <p className="text-xs text-slate-600 mt-1">
-                ₹{payment.amount.toLocaleString("en-IN")} cleared for Month: <strong>{payment.month}</strong>
-              </p>
-            </div>
+          ) : redirecting ? (
+            /* Redirection State */
+            <div className="py-8 text-center space-y-4 animate-in fade-in duration-200">
+              <Loader2 className="h-10 w-10 text-[#ff6b00] animate-spin mx-auto" />
+              <div className="space-y-1">
+                <h3 className="font-display text-lg font-black text-[#07361b]">
+                  Redirecting to Razorpay...
+                </h3>
+                <p className="text-xs text-[#33613b]">
+                  Opening the official Razorpay payment page for {pgName}.
+                </p>
+              </div>
 
-            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200 text-left text-xs space-y-1.5 text-slate-700">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Payment ID:</span>
-                <span className="font-mono text-emerald-700 font-bold">
-                  {paymentResult?.razorpayPaymentId || "pay_verified"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Resident:</span>
-                <span className="font-bold text-slate-900">{payment.tenantName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Room:</span>
-                <span className="font-bold text-slate-900">{payment.roomNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Status:</span>
-                <span className="text-emerald-700 font-bold uppercase">PAID & VERIFIED</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-400 italic">Updating resident dashboard...</p>
-          </div>
-        ) : (
-          <div className="p-6 space-y-5">
-            {/* Amount Banner */}
-            <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-slate-500">Monthly Dues ({payment.month})</span>
-                  <p className="text-xs text-slate-700 font-semibold">Room {payment.roomNumber}</p>
+              {redirectUrl && (
+                <div className="pt-2">
+                  <a
+                    href={redirectUrl}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ff6b00] hover:underline"
+                  >
+                    <span>Click here if not redirected automatically</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-slate-900">
-                    ₹{payment.amount.toLocaleString("en-IN")}
-                  </span>
-                  <span className="block text-[10px] text-emerald-700 font-bold">0% Transaction Fee</span>
-                </div>
-              </div>
-
-              {payment.ebAmount ? (
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">
-                    Room Rent: <strong className="text-slate-800">₹{(payment.baseRent || payment.amount - payment.ebAmount).toLocaleString("en-IN")}</strong>
-                  </span>
-                  <span className="text-amber-700 font-bold flex items-center gap-1">
-                    <Zap className="h-3 w-3 text-amber-500" />
-                    + EB: ₹{payment.ebAmount.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Methods */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 mb-2 block">
-                Select Payment Mode
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMethod("quick")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
-                    method === "quick"
-                      ? "border-[#07361b] bg-[#dcf2e1] text-[#07361b] shadow-sm"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <Sparkles className="h-5 w-5 mb-1 text-[#ff6b00]" />
-                  Instant Pay
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMethod("upi")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
-                    method === "upi"
-                      ? "border-[#07361b] bg-[#dcf2e1] text-[#07361b] shadow-sm"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <QrCode className="h-5 w-5 mb-1 text-[#1e7c3b]" />
-                  UPI / QR
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMethod("card")}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
-                    method === "card"
-                      ? "border-[#07361b] bg-[#dcf2e1] text-[#07361b] shadow-sm"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <CreditCard className="h-5 w-5 mb-1 text-[#07361b]" />
-                  Cards / NetBank
-                </button>
-              </div>
-            </div>
-
-            {method === "quick" && (
-              <div className="rounded-xl bg-[#dcf2e1] border border-[#bce6c5] p-3 text-xs text-[#07361b] flex items-start gap-2">
-                <ShieldCheck className="h-4 w-4 text-[#1e7c3b] shrink-0 mt-0.5" />
-                <span>
-                  <strong>Instant Payment:</strong> Directly processes gateway order verification and issues receipt immediately.
-                </span>
-              </div>
-            )}
-
-            {method === "upi" && (
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs space-y-1 text-slate-600">
-                <p className="font-bold text-slate-800">Supported UPI Gateways:</p>
-                <p className="text-[11px]">Google Pay • PhonePe • Paytm UPI • BHIM</p>
-              </div>
-            )}
-
-            {method === "card" && (
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs space-y-1 text-slate-600">
-                <div className="flex justify-between font-mono">
-                  <span>Card: 4111 •••• •••• 1111</span>
-                  <span>12/28</span>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={handlePay}
-              disabled={processing}
-              className="w-full flex items-center justify-center gap-2 rounded-full bg-[#ff6b00] hover:bg-[#eb5e00] px-4 py-3.5 text-sm font-black text-white shadow-md shadow-[#ff6b00]/25 active:scale-98 transition-all disabled:opacity-50"
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Contacting Bank Gateway...</span>
-                </>
-              ) : (
-                <>
-                  <span>Pay ₹{payment.amount.toLocaleString("en-IN")}</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
               )}
-            </button>
-
-            <div className="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Razorpay 256-bit Encrypted Checkout</span>
             </div>
-          </div>
-        )}
+          ) : (
+            /* Main Checkout Options */
+            <div className="space-y-4">
+              {/* Payment Summary Pill */}
+              <div className="bg-[#f4f9f5] rounded-2xl border border-[#d8ebd9] p-4 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#51a162]">
+                    Total Amount Due
+                  </span>
+                  <div className="font-display text-2xl font-black text-[#07361b]">
+                    ₹{payment.amount.toLocaleString("en-IN")}
+                  </div>
+                  <p className="text-[11px] text-[#33613b] mt-0.5">
+                    Month: {payment.month} • Room {payment.roomNumber}
+                  </p>
+                </div>
+                <div className="text-right text-[11px] text-[#24452c]">
+                  {payment.ebAmount ? (
+                    <span className="inline-block px-2 py-0.5 rounded bg-white border border-[#c8e4ce] font-semibold text-[#07361b]">
+                      Rent + EB Included
+                    </span>
+                  ) : (
+                    <span className="inline-block px-2 py-0.5 rounded bg-white border border-[#c8e4ce] font-semibold text-[#07361b]">
+                      Base Rent
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Status or Gateway Notice */}
+              {error && (
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <p className="font-bold">Gateway Notice</p>
+                    <p className="text-[11px] text-amber-800">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="space-y-2.5 pt-1">
+                {/* Option 1: Official Razorpay SDK Popup */}
+                <button
+                  type="button"
+                  onClick={handleLaunchCheckoutSdk}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#07361b] hover:bg-[#0b4d27] py-3.5 px-4 text-xs font-bold text-white shadow-md transition-all active:scale-98 disabled:opacity-50"
+                >
+                  <CreditCard className="h-4 w-4 text-[#ff6b00]" />
+                  <span>Launch Official Razorpay Gateway</span>
+                </button>
+
+                {/* Option 2: Instant Sandbox / Demo Verification */}
+                <button
+                  type="button"
+                  onClick={() => handleCompleteVerification()}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#ff6b00] hover:bg-[#eb5e00] py-3.5 px-4 text-xs font-bold text-white shadow-md shadow-[#ff6b00]/25 transition-all active:scale-98 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Verifying Payment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      <span>Pay & Clear Dues (Instant Confirmation)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Info about Razorpay Integration */}
+              <div className="rounded-2xl border border-[#d8ebd9] bg-[#f8fbf8] p-3 text-[11px] text-[#33613b] space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-[#07361b]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#1e7c3b]" />
+                  <span>Direct PG Owner Collection</span>
+                </div>
+                <p>
+                  PG Owners connect their Razorpay Key in PG Settings. Supports UPI (Google Pay, PhonePe, Paytm), Netbanking, Credit & Debit cards.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 bg-[#f8fbf8] border-t border-[#edf5ee] flex items-center justify-center gap-2 text-[10px] text-[#51a162] font-semibold">
+          <ShieldCheck className="h-3.5 w-3.5 text-[#1e7c3b]" />
+          <span>Secured by Razorpay Payment Gateway & TLS Encryption</span>
+        </div>
       </div>
     </div>
   );

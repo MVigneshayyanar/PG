@@ -233,7 +233,8 @@ function TenantsManagerContent() {
           </div>
         ) : (
           <div className="bg-white rounded-3xl border border-[#d8ebd9] shadow-xs overflow-hidden">
-            <table className="min-w-full divide-y divide-[#edf5ee] text-left text-xs">
+            <div className="overflow-x-auto w-full">
+              <table className="min-w-full divide-y divide-[#edf5ee] text-left text-xs">
               <thead className="bg-[#f4f9f5] font-bold text-[#07361b]">
                 <tr>
                   <th className="px-5 py-3.5">Tenant Name</th>
@@ -282,7 +283,8 @@ function TenantsManagerContent() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         )}
       </main>

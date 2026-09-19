@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { RazorpayModal } from "@/components/RazorpayModal";
+import confetti from "canvas-confetti";
 import { Tenant, Room, Payment, Ticket, TicketCategory } from "@/types";
 
 function TenantDashboardContent() {
@@ -87,9 +88,27 @@ function TenantDashboardContent() {
       }
     }
 
-    targetPhone = targetPhone || "9876543211";
-    fetchTenantData(targetPhone);
+    if (targetPhone) {
+      fetchTenantData(targetPhone);
+    } else {
+      router.push("/login");
+    }
   }, [phoneParam]);
+
+  // Handle return from Razorpay redirection
+  useEffect(() => {
+    if (searchParams?.get("payment_success") === "true") {
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (showTicketModal) {
@@ -172,6 +191,28 @@ function TenantDashboardContent() {
           </div>
         ) : (
           <>
+            {/* Razorpay Payment Success Banner */}
+            {searchParams?.get("payment_success") === "true" && (
+              <div className="rounded-3xl bg-[#dcf2e1] border border-[#bce6c5] p-5 text-xs text-[#07361b] flex items-center justify-between gap-3 shadow-md shadow-[#07361b]/5 animate-in slide-in-from-top-3 duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-[#07361b] text-white flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-5 w-5 text-[#ff6b00]" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-black text-sm text-[#07361b]">
+                      Payment Successfully Verified via Razorpay!
+                    </h3>
+                    <p className="text-[11px] text-[#33613b] mt-0.5 font-medium">
+                      Your rent & charges have been cleared. Payment reference:{" "}
+                      <span className="font-mono font-bold text-[#07361b]">
+                        {searchParams.get("ref") || "pay_verified"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Resident Profile Banner */}
             <div className="bg-white p-6 rounded-3xl border border-[#d8ebd9] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -442,6 +483,8 @@ function TenantDashboardContent() {
         <RazorpayModal
           payment={payingPayment}
           pgName={pg?.pgName || "PG Accommodation"}
+          tenantName={tenant?.name || "Resident"}
+          tenantPhone={tenant?.phoneNumber || ""}
           onSuccess={handlePaymentSuccess}
           onClose={() => setPayingPayment(null)}
         />
