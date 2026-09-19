@@ -83,7 +83,7 @@ async function syncToFirestoreIfEmpty() {
   if (store.seededFirestore) return;
 
   try {
-    const snap = await withTimeout(getDocs(collection(db, "pgs")), 2000);
+    const snap = await withTimeout(getDocs(collection(db, "pgs")), 3000);
     if (snap.empty) {
       console.log("[PGM Firestore] Initializing Firestore collections...");
       for (const p of store.pgs) {
@@ -105,6 +105,42 @@ async function syncToFirestoreIfEmpty() {
         await setDoc(doc(db, "tickets", tk.id), tk);
       }
       console.log("[PGM Firestore] Seed complete.");
+    } else {
+      // Load all Firestore PGs into memory
+      const firestorePgs = snap.docs.map((d) => d.data() as PGProfile);
+      store.pgs = firestorePgs;
+
+      // Load all rooms from Firestore
+      try {
+        const roomsSnap = await withTimeout(getDocs(collection(db, "rooms")), 2500);
+        if (!roomsSnap.empty) {
+          store.rooms = roomsSnap.docs.map((d) => d.data() as Room);
+        }
+      } catch (_) {}
+
+      // Load all tenants from Firestore
+      try {
+        const tenantsSnap = await withTimeout(getDocs(collection(db, "tenants")), 2500);
+        if (!tenantsSnap.empty) {
+          store.tenants = tenantsSnap.docs.map((d) => d.data() as Tenant);
+        }
+      } catch (_) {}
+
+      // Load all payments from Firestore
+      try {
+        const paymentsSnap = await withTimeout(getDocs(collection(db, "payments")), 2500);
+        if (!paymentsSnap.empty) {
+          store.payments = paymentsSnap.docs.map((d) => d.data() as Payment);
+        }
+      } catch (_) {}
+
+      // Load all tickets from Firestore
+      try {
+        const ticketsSnap = await withTimeout(getDocs(collection(db, "tickets")), 2500);
+        if (!ticketsSnap.empty) {
+          store.tickets = ticketsSnap.docs.map((d) => d.data() as Ticket);
+        }
+      } catch (_) {}
     }
     store.seededFirestore = true;
   } catch (err) {
@@ -611,14 +647,78 @@ export async function vacateTenantWithReview(params: {
 // -------------------------------------------------------------
 // 5. STANDARD OPERATIONS: Rooms, Tenants, Payments, Dashboard
 // -------------------------------------------------------------
-export async function getPG(pgId?: string): Promise<PGProfile> {
+export async function getPG(pgId?: string, ownerPhone?: string): Promise<PGProfile> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
+
+  // 1. Try by pgId in memory
   if (pgId) {
     const found = store.pgs.find((p) => p.id === pgId);
     if (found) return found;
   }
-  return store.pgs[0];
+
+  // 2. Try by ownerPhone in memory
+  if (ownerPhone) {
+    const clean = ownerPhone.replace(/[^0-9]/g, "").slice(-10);
+    const found = store.pgs.find((p) => p.ownerPhone.replace(/[^0-9]/g, "").slice(-10) === clean);
+    if (found) return found;
+  }
+
+  // 3. Query Firestore directly if not yet in memory
+  if (isFirebaseConfigured && db) {
+    try {
+      if (pgId) {
+        const snap = await withTimeout(getDoc(doc(db, "pgs", pgId)), 2500);
+        if (snap.exists()) {
+          const data = snap.data() as PGProfile;
+          const idx = store.pgs.findIndex((p) => p.id === data.id);
+          if (idx >= 0) store.pgs[idx] = data;
+          else store.pgs.push(data);
+          return data;
+        }
+      }
+
+      if (ownerPhone) {
+        const clean = ownerPhone.replace(/[^0-9]/g, "").slice(-10);
+        const q = query(collection(db, "pgs"), where("ownerPhone", "==", clean));
+        const snap = await withTimeout(getDocs(q), 2500);
+        if (!snap.empty) {
+          const data = snap.docs[0].data() as PGProfile;
+          const idx = store.pgs.findIndex((p) => p.id === data.id);
+          if (idx >= 0) store.pgs[idx] = data;
+          else store.pgs.push(data);
+          return data;
+        }
+      }
+
+      const snap = await withTimeout(getDocs(collection(db, "pgs")), 2500);
+      if (!snap.empty) {
+        const allPgs = snap.docs.map((d) => d.data() as PGProfile);
+        store.pgs = allPgs;
+        return allPgs[0];
+      }
+    } catch (e) {
+      console.warn("Firestore getPG error:", e);
+    }
+  }
+
+  // Safe fallback to prevent undefined crash
+  return store.pgs[0] || {
+    id: pgId || "pg-default",
+    pgName: "My PG Accommodation",
+    ownerName: "PG Owner",
+    ownerPhone: ownerPhone || "",
+    address: "",
+    city: "",
+    status: "approved",
+    pricingStartingFrom: 5000,
+    amenities: [],
+    rules: [],
+    images: [],
+    location: { city: "", state: "", pincode: "", landmark: "", mapCoordinates: { lat: 12.9716, lng: 77.5946 } },
+    razorpay: { keyId: "", enabled: false },
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function updatePG(updates: Partial<PGProfile>): Promise<PGProfile> {
@@ -652,7 +752,7 @@ export async function updatePG(updates: Partial<PGProfile>): Promise<PGProfile> 
 export async function getRooms(pgId?: string): Promise<Room[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
-  const targetPgId = pgId || store.pgs[0].id;
+  const targetPgId = pgId || (store.pgs[0]?.id || "");
 
   // Clean up any historical duplicate rooms with same roomNumber
   const seenRoomNumbers = new Map<string, Room>();
@@ -826,7 +926,7 @@ export async function updateRoom(
 export async function getTenants(pgId?: string): Promise<Tenant[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
-  const targetPgId = pgId || store.pgs[0].id;
+  const targetPgId = pgId || (store.pgs[0]?.id || "");
   const tenants = store.tenants.filter(
     (t) => t.pgId === targetPgId && t.active !== false
   );
@@ -920,7 +1020,7 @@ export async function getTenantByPhone(phoneNumber: string): Promise<Tenant | nu
 export async function getPayments(pgId?: string, month = CURRENT_MONTH): Promise<Payment[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
-  const targetPgId = pgId || store.pgs[0].id;
+  const targetPgId = pgId || (store.pgs[0]?.id || "");
 
   const existingForMonth = store.payments.filter(
     (p) => p.pgId === targetPgId && (!month || p.month === month)
@@ -1053,7 +1153,7 @@ export async function updatePayment(
 export async function getTickets(pgId?: string, status?: TicketStatus): Promise<Ticket[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
-  const targetPgId = pgId || store.pgs[0].id;
+  const targetPgId = pgId || (store.pgs[0]?.id || "");
   return store.tickets
     .filter((t) => t.pgId === targetPgId && (!status || t.status === status))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -1115,7 +1215,7 @@ export async function resolveTicket(ticketId: string): Promise<Ticket | null> {
 export async function getPreviousTenantsHistory(pgId?: string): Promise<TenantHistory[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
-  const targetPgId = pgId || store.pgs[0].id;
+  const targetPgId = pgId || (store.pgs[0]?.id || "");
   return store.tenantHistory
     .filter((h) => !targetPgId || h.pgId === targetPgId)
     .sort((a, b) => new Date(b.vacatedAt).getTime() - new Date(a.vacatedAt).getTime());
@@ -1294,7 +1394,7 @@ export async function getRoomEBReadings(
 ): Promise<RoomEBReading[]> {
   await syncToFirestoreIfEmpty();
   const store = getStore();
-  const targetPgId = pgId || store.pgs[0].id;
+  const targetPgId = pgId || (store.pgs[0]?.id || "");
 
   if (isFirebaseConfigured && db) {
     try {
@@ -1336,15 +1436,18 @@ export async function getRoomEBReadings(
   );
 }
 
-export async function getOwnerDashboardData(pgId?: string, month = CURRENT_MONTH) {
+export async function getOwnerDashboardData(pgId?: string, month = CURRENT_MONTH, phone?: string) {
   await syncToFirestoreIfEmpty();
-  const pg = await getPG(pgId);
-  const rooms = await getRooms(pg.id);
-  const tenants = await getTenants(pg.id);
-  const payments = await getPayments(pg.id, month);
-  const tickets = await getTickets(pg.id);
-  const previousTenants = await getPreviousTenantsHistory(pg.id);
-  const ebReadings = await getRoomEBReadings(pg.id, month);
+  const pg = await getPG(pgId, phone);
+  const store = getStore();
+  const targetPgId = pg?.id || pgId || (store.pgs[0]?.id || "");
+
+  const rooms = await getRooms(targetPgId);
+  const tenants = await getTenants(targetPgId);
+  const payments = await getPayments(targetPgId, month);
+  const tickets = await getTickets(targetPgId);
+  const previousTenants = await getPreviousTenantsHistory(targetPgId);
+  const ebReadings = await getRoomEBReadings(targetPgId, month);
 
   const paidPayments = payments.filter((p) => p.status === "paid");
   const unpaidPayments = payments.filter((p) => p.status === "unpaid");

@@ -105,7 +105,25 @@ export default function OwnerDashboardPage() {
   const fetchDashboard = async (targetMonth = selectedMonth) => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/owner/dashboard?month=${targetMonth}`);
+      let pgId = "";
+      let phone = "";
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("pgm_session");
+          if (raw) {
+            const sess = JSON.parse(raw);
+            pgId = sess.user?.pgId || sess.pgId || "";
+            phone = sess.user?.phone || sess.phone || "";
+          }
+        } catch (_) {}
+      }
+
+      const params = new URLSearchParams();
+      if (targetMonth) params.set("month", targetMonth);
+      if (pgId) params.set("pgId", pgId);
+      if (phone) params.set("phone", phone);
+
+      const res = await fetch(`/api/owner/dashboard?${params.toString()}`);
       const json = await res.json();
       if (json.success) {
         setData(json);
