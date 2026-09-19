@@ -48,6 +48,8 @@ export default function TenantLoginPage() {
       let msg = err?.message || "Failed to send verification SMS.";
       if (err?.code === "auth/invalid-phone-number") {
         msg = "The phone number format is invalid.";
+      } else if (err?.code === "auth/invalid-app-credential") {
+        msg = "App Credential Error: Please add your domain (e.g. your Vercel URL or localhost) to Firebase Console -> Authentication -> Settings -> Authorized Domains, and verify Firebase environment variables.";
       } else if (err?.code === "auth/operation-not-allowed") {
         msg = "SMS Region Blocked: In Firebase Console -> Authentication -> Settings -> SMS Region Policy, allow India (+91), or add your number under 'Phone numbers for testing'.";
       } else if (err?.code === "auth/quota-exceeded") {

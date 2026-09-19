@@ -13,15 +13,18 @@ declare global {
 }
 
 /**
- * Initializes or resets an invisible RecaptchaVerifier on the specified DOM element.
+ * Initializes an invisible RecaptchaVerifier on the specified DOM element.
+ * Safe for React re-renders and single-page navigation.
  */
-export function initRecaptcha(containerId = "recaptcha-container"): RecaptchaVerifier {
+export async function initRecaptcha(containerId = "recaptcha-container"): Promise<RecaptchaVerifier> {
   if (typeof window === "undefined") {
     throw new Error("reCAPTCHA can only be initialized on the client");
   }
 
   if (!auth) {
-    throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
+    throw new Error(
+      "Firebase Auth is not initialized. Please verify your Firebase environment variables in Vercel/local .env."
+    );
   }
 
   // Clear existing verifier if any to prevent stale widget state
@@ -34,19 +37,30 @@ export function initRecaptcha(containerId = "recaptcha-container"): RecaptchaVer
     window.recaptchaVerifier = undefined;
   }
 
+  // Ensure target container element is present in the DOM
+  const container = document.getElementById(containerId);
+  if (!container) {
+    throw new Error(`reCAPTCHA container #${containerId} not found in the DOM.`);
+  }
+
   const verifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
     callback: () => {
-      // reCAPTCHA solved — will proceed with submit
+      // reCAPTCHA solved
     },
     "expired-callback": () => {
       console.warn("reCAPTCHA expired, resetting...");
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (_) {}
         window.recaptchaVerifier = undefined;
       }
     },
   });
+
+  // Explicitly render to establish the widget ID
+  await verifier.render();
 
   window.recaptchaVerifier = verifier;
   return verifier;
@@ -61,7 +75,9 @@ export async function sendFirebaseOtp(
   containerId = "recaptcha-container"
 ): Promise<ConfirmationResult> {
   if (!auth) {
-    throw new Error("Firebase Auth is not configured. Check your environment variables.");
+    throw new Error(
+      "Firebase Auth is not configured. Check your environment variables (NEXT_PUBLIC_FIREBASE_*)."
+    );
   }
 
   const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
@@ -70,7 +86,7 @@ export async function sendFirebaseOtp(
   }
 
   const formattedPhone = `+91${cleanPhone}`;
-  const appVerifier = initRecaptcha(containerId);
+  const appVerifier = await initRecaptcha(containerId);
 
   return await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
 }
