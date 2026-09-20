@@ -24,6 +24,12 @@ if (isFirebaseConfigured) {
   try {
     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     auth = getAuth(app);
+    if (
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ) {
+      auth.settings.appVerificationDisabledForTesting = true;
+    }
     db = getFirestore(app);
   } catch (error) {
     console.warn("Firebase client initialization warning:", error);

@@ -317,7 +317,17 @@ export async function registerPG(params: {
     }
   }
 
-  return newPG;
+  // Never return raw keySecret to client
+  const clientSafePG: PGProfile = {
+    ...newPG,
+    razorpay: newPG.razorpay
+      ? {
+          keyId: newPG.razorpay.keyId || "",
+        }
+      : undefined,
+  };
+
+  return clientSafePG;
 }
 
 // Admin: Get all PG applications with status, capacity and room summary
@@ -363,6 +373,12 @@ export async function getPGApplications(): Promise<PGApplication[]> {
     const pgRooms = rooms.filter((r) => r.pgId === p.id);
     return {
       ...p,
+      // Redact sensitive Razorpay secret key from application listings
+      razorpay: p.razorpay
+        ? {
+            keyId: p.razorpay.keyId || "",
+          }
+        : undefined,
       status: p.status || "approved", // Older/seeded PGs default to approved
       roomCount: pgRooms.length,
       totalCapacity: pgRooms.reduce((acc, r) => acc + r.capacity, 0),
@@ -436,8 +452,12 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
     throw new Error("Invalid OTP. Please enter the 6-digit verification code.");
   }
 
-  // 1. Check Super Admin Phone (9626855406 or 9626855406) - Instant check without DB delay
-  if (cleanPhone === "9626855406" || cleanPhone === "9626855406") {
+  // 1. Check Super Admin Phone (configured via environment)
+  const configuredAdminPhone = (process.env.ADMIN_PHONE_NUMBER || process.env.NEXT_PUBLIC_ADMIN_PHONE || "9626855406")
+    .replace(/[^0-9]/g, "")
+    .slice(-10);
+
+  if (configuredAdminPhone && cleanPhone === configuredAdminPhone) {
     return {
       role: "admin" as const,
       user: {
@@ -478,8 +498,9 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
   if (ownerPG) {
     // Gatekeeper: Check if PG application is approved
     if (ownerPG.status && ownerPG.status !== "approved") {
+      const hotline = process.env.NEXT_PUBLIC_ADMIN_PHONE || "9626855406";
       throw new Error(
-        "Your accommodation is not approved yet. Kindly wait or contact via this number: 9626855406"
+        `Your accommodation is not approved yet. Kindly wait or contact via hotline: ${hotline}`
       );
     }
 
@@ -1500,7 +1521,12 @@ export async function getOwnerDashboardData(pgId?: string, month = CURRENT_MONTH
   await syncToFirestoreIfEmpty();
   const pg = await getPG(pgId, phone);
   const store = getStore();
-  const targetPgId = pg?.id || pgId || (store.pgs[0]?.id || "");
+  // Do not fall back to another owner's PG if unauthorized/unspecified
+  const targetPgId = pg?.id || pgId || "";
+
+  if (!targetPgId) {
+    throw new Error("Property identifier or owner verification required.");
+  }
 
   const rooms = await getRooms(targetPgId);
   const tenants = await getTenants(targetPgId);
@@ -1543,8 +1569,20 @@ export async function getOwnerDashboardData(pgId?: string, month = CURRENT_MONTH
     previousTenantsCount: previousTenants.length,
   };
 
+  // Redact Razorpay keySecret before returning to client
+  const sanitizedPg = pg
+    ? {
+        ...pg,
+        razorpay: pg.razorpay
+          ? {
+              keyId: pg.razorpay.keyId || "",
+            }
+          : undefined,
+      }
+    : null;
+
   return {
-    pg,
+    pg: sanitizedPg,
     stats,
     selectedMonth: month || CURRENT_MONTH,
     paidList: paidPayments,

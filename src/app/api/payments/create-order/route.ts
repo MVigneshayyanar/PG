@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPG } from "@/lib/store";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const { paymentId, tenantId, amount, pgId, origin: clientOrigin, tenantName, tenantPhone } =

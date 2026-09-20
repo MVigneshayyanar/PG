@@ -62,8 +62,9 @@ export default function AdminDashboardPage() {
     if (rawSession) {
       try {
         const session = JSON.parse(rawSession);
-        if (session.role !== "admin" && session.phone !== "9626855406" && session.phone !== "9626855406" && session.phone !== "9626855406") {
-          // If not admin, still allow viewing if they want or notify
+        const adminPhone = process.env.NEXT_PUBLIC_ADMIN_PHONE || "9626855406";
+        if (session.role !== "admin" && session.phone !== adminPhone) {
+          // Non-admin session notification or restriction
         }
       } catch (e) {
         console.warn("Session check error:", e);

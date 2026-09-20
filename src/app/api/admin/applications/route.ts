@@ -40,11 +40,15 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await updatePGApplicationStatus(pgId, status, rejectionReason);
+    const clientSafePG = {
+      ...updated,
+      razorpay: updated.razorpay ? { keyId: updated.razorpay.keyId || "" } : undefined,
+    };
 
     return NextResponse.json({
       success: true,
       message: `PG application ${status} successfully!`,
-      pg: updated,
+      pg: clientSafePG,
     });
   } catch (error: any) {
     return NextResponse.json(

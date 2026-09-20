@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTickets, createTicket } from "@/lib/store";
 import { TicketCategory, TicketStatus } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

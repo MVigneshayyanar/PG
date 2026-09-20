@@ -780,10 +780,29 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#dceadc] bg-white py-6 text-center text-xs text-[#33613b]">
-        <p className="font-bold text-[#07361b]">PGM — Paying Guest & Coliving Management Platform</p>
-        <p className="text-[11px] text-[#51a162] mt-0.5">&copy; {new Date().getFullYear()} PGM. All rights reserved.</p>
+      {/* Footer with Legal Compliance Links */}
+      <footer className="border-t border-[#dceadc] bg-white py-8 text-center text-xs text-[#33613b]">
+        <div className="max-w-7xl mx-auto px-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold text-[#07361b]">
+            <Link href="/privacy-policy" className="hover:text-emerald-700 transition-colors">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-emerald-700 transition-colors">
+              Terms & Conditions
+            </Link>
+            <span>•</span>
+            <Link href="/refund-policy" className="hover:text-emerald-700 transition-colors">
+              Refund & Cancellation
+            </Link>
+            <span>•</span>
+            <Link href="/contact" className="hover:text-emerald-700 transition-colors">
+              Contact Us
+            </Link>
+          </div>
+          <p className="font-bold text-[#07361b] pt-1">PGM — Paying Guest & Coliving Management Platform</p>
+          <p className="text-[11px] text-[#51a162]">&copy; {new Date().getFullYear()} PGM. Compliant with IT Act 2000 & DPDP Act 2023. All rights reserved.</p>
+        </div>
       </footer>
     </div>
   );

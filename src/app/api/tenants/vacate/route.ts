@@ -6,7 +6,15 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { tenantId, rating, blackmark, comment, ownerName } = body;
+    const { tenantId, rating, blackmark, comment, ownerName, ownerPhone } = body;
+
+    const callerOwner = ownerPhone || req.headers.get("x-owner-phone");
+    if (!callerOwner && !ownerName) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: Property owner identification is required to vacate a tenant." },
+        { status: 401 }
+      );
+    }
 
     if (!tenantId) {
       return NextResponse.json(
@@ -30,7 +38,10 @@ export async function POST(req: NextRequest) {
       ownerName: ownerName || "PG Owner",
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      message: "Tenant tenancy vacated and exit record logged lawfully.",
+    });
   } catch (error: any) {
     console.error("Vacate tenant error:", error);
     return NextResponse.json(

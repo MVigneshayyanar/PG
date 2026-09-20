@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
 
+export const dynamic = "force-dynamic";
+
 // All Firestore collections used by the app
 const COLLECTIONS = [
   "pgs",
@@ -16,9 +18,20 @@ export async function POST(req: NextRequest) {
   try {
     const { secret } = await req.json();
 
-    // Simple guard — only the admin can trigger this
-    if (secret !== "ADMIN_PURGE_9626855406" && secret !== "ADMIN_PURGE_9626855406") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+    // Secure guard: must be configured via environment variable
+    const configuredSecret = process.env.ADMIN_PURGE_SECRET;
+    if (!configuredSecret || secret !== configuredSecret) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: Invalid purge secret or purge feature disabled." },
+        { status: 403 }
+      );
+    }
+
+    if (process.env.NODE_ENV === "production" && process.env.ENABLE_DANGEROUS_PURGE !== "true") {
+      return NextResponse.json(
+        { success: false, error: "Database purge is disabled in production." },
+        { status: 403 }
+      );
     }
 
     if (!isFirebaseAdminConfigured || !adminDb) {

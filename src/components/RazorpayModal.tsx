@@ -115,10 +115,11 @@ export function RazorpayModal({
         name: pgName || "PG Accommodation",
         description: `Rent & EB Dues (${payment.month})`,
         handler: async function (response: any) {
-          const rzpPaymentId =
-            response.razorpay_payment_id ||
-            `pay_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-          await handleCompleteVerification(rzpPaymentId);
+          await handleCompleteVerification(
+            response.razorpay_payment_id,
+            response.razorpay_order_id,
+            response.razorpay_signature
+          );
         },
         prefill: {
           name: tenantName,
@@ -138,7 +139,11 @@ export function RazorpayModal({
   };
 
   // Complete payment and mark paid in Firestore
-  const handleCompleteVerification = async (rzpPaymentId?: string) => {
+  const handleCompleteVerification = async (
+    rzpPaymentId?: string,
+    rzpOrderId?: string,
+    rzpSignature?: string
+  ) => {
     try {
       setLoading(true);
       setError(null);
@@ -152,6 +157,8 @@ export function RazorpayModal({
         body: JSON.stringify({
           paymentId: payment.id,
           razorpayPaymentId: paymentRef,
+          razorpayOrderId: rzpOrderId,
+          razorpaySignature: rzpSignature,
         }),
       });
 

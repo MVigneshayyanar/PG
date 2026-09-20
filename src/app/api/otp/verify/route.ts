@@ -1,6 +1,8 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getTenantByPhone } from "@/lib/store";
-import { adminAuth, createTenantCustomToken } from "@/lib/firebase/admin";
+import { adminAuth, isFirebaseAdminConfigured, createTenantCustomToken } from "@/lib/firebase/admin";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,6 +35,11 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
+    } else if (isFirebaseAdminConfigured) {
+      return NextResponse.json(
+        { success: false, error: "Verified phone authentication token is required." },
+        { status: 401 }
+      );
     } else if (!otp || otp.trim().length < 6) {
       return NextResponse.json(
         { success: false, error: "Invalid OTP. Please enter the 6-digit verification code." },
