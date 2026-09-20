@@ -444,6 +444,48 @@ export async function updatePGApplicationStatus(
   return pg;
 }
 
+// Completely wipe all in-memory and Firestore database records
+export async function purgeEntireDatabase() {
+  const store = getStore();
+  store.pgs = [];
+  store.rooms = [];
+  store.tenants = [];
+  store.tenantHistory = [];
+  store.payments = [];
+  store.tickets = [];
+  store.ebReadings = [];
+  store.seededFirestore = true;
+
+  const collections = [
+    "pgs",
+    "rooms",
+    "tenants",
+    "tenant_history",
+    "payments",
+    "tickets",
+    "eb_readings",
+    "applications",
+    "users",
+  ];
+
+  let deletedCount = 0;
+  if (isFirebaseConfigured && db) {
+    for (const col of collections) {
+      try {
+        const snap = await getDocs(collection(db, col));
+        for (const docItem of snap.docs) {
+          await deleteDoc(doc(db, col, docItem.id));
+          deletedCount++;
+        }
+      } catch (err) {
+        console.warn(`Error purging collection ${col}:`, err);
+      }
+    }
+  }
+
+  return { success: true, deletedCount };
+}
+
 // Unified Phone + OTP Verification
 export async function authenticateUnifiedPhone(phoneNumber: string, otp: string) {
   const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
