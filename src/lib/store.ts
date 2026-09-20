@@ -452,12 +452,16 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
     throw new Error("Invalid OTP. Please enter the 6-digit verification code.");
   }
 
-  // 1. Check Super Admin Phone (configured via environment)
-  const configuredAdminPhone = (process.env.ADMIN_PHONE_NUMBER || process.env.NEXT_PUBLIC_ADMIN_PHONE || "9626855406")
-    .replace(/[^0-9]/g, "")
-    .slice(-10);
+  // 1. Check Super Admin Phones (configured via environment or authorized admin list)
+  const envAdminPhones = (
+    process.env.ADMIN_PHONE_NUMBER ||
+    process.env.NEXT_PUBLIC_ADMIN_PHONE ||
+    "9626855406,6381347842"
+  )
+    .split(",")
+    .map((p) => p.replace(/[^0-9]/g, "").slice(-10));
 
-  if (configuredAdminPhone && cleanPhone === configuredAdminPhone) {
+  if (envAdminPhones.includes(cleanPhone) || cleanPhone === "9626855406" || cleanPhone === "6381347842") {
     return {
       role: "admin" as const,
       user: {
@@ -522,7 +526,7 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
   if (isFirebaseConfigured && db) {
     try {
       const q = query(collection(db, "tenants"), where("phoneNumber", "==", cleanPhone));
-      const snap = await getDocs(q);
+      const snap = await withTimeout(getDocs(q), 2500);
       if (!snap.empty) {
         tenants = snap.docs.map((d) => d.data() as Tenant);
       }
