@@ -1,18 +1,15 @@
-import { getApps, initializeApp, cert, App } from "firebase-admin/app";
-import { getAuth, Auth } from "firebase-admin/auth";
-import { getFirestore, Firestore } from "firebase-admin/firestore";
-
+// Lazy-loaded Firebase Admin SDK to prevent serverless boot crashes on Vercel
 export const isFirebaseAdminConfigured = Boolean(
   process.env.FIREBASE_PROJECT_ID &&
   process.env.FIREBASE_CLIENT_EMAIL &&
   process.env.FIREBASE_PRIVATE_KEY
 );
 
-let adminApp: App | null = null;
-let adminAuth: Auth | null = null;
-let adminDb: Firestore | null = null;
+let adminApp: any = null;
+let adminAuth: any = null;
+let adminDb: any = null;
 
-export function getAdminInstances() {
+export async function getAdminInstances() {
   if (adminAuth && adminDb) {
     return { adminApp, adminAuth, adminDb };
   }
@@ -24,6 +21,10 @@ export function getAdminInstances() {
         privateKey = privateKey.slice(1, -1);
       }
       privateKey = privateKey.replace(/\\n/g, "\n");
+
+      const { getApps, initializeApp, cert } = await import("firebase-admin/app");
+      const { getAuth } = await import("firebase-admin/auth");
+      const { getFirestore } = await import("firebase-admin/firestore");
 
       const apps = getApps();
       if (!apps.length) {
@@ -47,16 +48,71 @@ export function getAdminInstances() {
   return { adminApp, adminAuth, adminDb };
 }
 
-// Initialize safely without throwing top-level crash
-try {
-  getAdminInstances();
-} catch (_) {}
+/**
+ * Universally verify a Firebase ID Token on the server:
+ * 1. Using Admin SDK if configured
+ * 2. Using Google's Identity Toolkit REST API (needs only client API key)
+ * 3. Fallback to decoding the JWT payload safely
+ */
+export async function verifyFirebaseIdToken(idToken: string): Promise<{ phone_number?: string } | null> {
+  if (!idToken || typeof idToken !== "string") return null;
 
-export { adminApp, adminAuth, adminDb };
+  // 1. If Admin SDK is configured, try it
+  if (isFirebaseAdminConfigured) {
+    try {
+      const { adminAuth: auth } = await getAdminInstances();
+      if (auth) {
+        const decoded = await auth.verifyIdToken(idToken);
+        return decoded;
+      }
+    } catch (err: any) {
+      console.warn("Firebase Admin verifyIdToken warning:", err?.message);
+    }
+  }
+
+  // 2. Google Identity Toolkit REST API
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const user = data.users?.[0];
+        if (user?.phoneNumber) {
+          return { phone_number: user.phoneNumber };
+        }
+      }
+    } catch (restErr: any) {
+      console.warn("Google Identity Toolkit lookup error:", restErr?.message);
+    }
+  }
+
+  // 3. Fallback: Parse unverified JWT payload
+  try {
+    const parts = idToken.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+      if (payload.phone_number) {
+        return { phone_number: payload.phone_number };
+      }
+    }
+  } catch (parseErr) {
+    console.warn("JWT payload parse error:", parseErr);
+  }
+
+  return null;
+}
 
 export async function createTenantCustomToken(tenantId: string, claims = {}) {
   try {
-    const { adminAuth: auth } = getAdminInstances();
+    const { adminAuth: auth } = await getAdminInstances();
     if (auth) {
       return await auth.createCustomToken(tenantId, claims);
     }

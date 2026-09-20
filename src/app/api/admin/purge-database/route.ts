@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
+import { getAdminInstances, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { adminDb } = await getAdminInstances();
+
     if (!isFirebaseAdminConfigured || !adminDb) {
       return NextResponse.json({
         success: true,
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
     for (const col of COLLECTIONS) {
       const snap = await adminDb.collection(col).get();
       const batch = adminDb.batch();
-      snap.docs.forEach((d) => batch.delete(d.ref));
+      snap.docs.forEach((d: any) => batch.delete(d.ref));
       if (snap.size > 0) await batch.commit();
       summary[col] = snap.size;
       totalDeleted += snap.size;

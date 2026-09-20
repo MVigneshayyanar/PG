@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTenantByPhone } from "@/lib/store";
-import { adminAuth, isFirebaseAdminConfigured, createTenantCustomToken } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured, verifyFirebaseIdToken, createTenantCustomToken } from "@/lib/firebase/admin";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phoneNumber, otp, idToken } = await req.json();
+    const { phoneNumber, otp, idToken } = await req.json().catch(() => ({}));
 
     if (!phoneNumber) {
       return NextResponse.json(
@@ -18,18 +18,20 @@ export async function POST(req: NextRequest) {
     const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
 
     // Cryptographically verify the Firebase Auth ID Token if provided
-    if (idToken && adminAuth) {
+    if (idToken) {
       try {
-        const decoded = await adminAuth.verifyIdToken(idToken);
-        const tokenPhone = (decoded.phone_number || "").replace(/[^0-9]/g, "").slice(-10);
-        if (tokenPhone && tokenPhone !== cleanPhone) {
-          return NextResponse.json(
-            { success: false, error: "Phone number does not match the verified session token." },
-            { status: 403 }
-          );
+        const decoded = await verifyFirebaseIdToken(idToken);
+        if (decoded?.phone_number) {
+          const tokenPhone = decoded.phone_number.replace(/[^0-9]/g, "").slice(-10);
+          if (tokenPhone && tokenPhone !== cleanPhone) {
+            return NextResponse.json(
+              { success: false, error: "Phone number does not match the verified session token." },
+              { status: 403 }
+            );
+          }
         }
       } catch (err: any) {
-        console.error("Firebase Admin ID token verification error:", err);
+        console.error("Firebase ID token verification error:", err);
         return NextResponse.json(
           { success: false, error: "Phone verification token is invalid or expired." },
           { status: 401 }
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate custom Firebase Auth token using Admin SDK
+    // Generate custom Firebase Auth token
     const customToken = await createTenantCustomToken(tenant.id, {
       phoneNumber: tenant.phoneNumber,
       pgId: tenant.pgId,

@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUnifiedPhone } from "@/lib/store";
-import { getAdminInstances } from "@/lib/firebase/admin";
+import { verifyFirebaseIdToken } from "@/lib/firebase/admin";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+
     const { phoneNumber, otp, idToken } = body;
 
     if (!phoneNumber) {
@@ -22,10 +28,9 @@ export async function POST(req: NextRequest) {
     // Cryptographically verify Firebase Auth ID Token if provided
     if (idToken) {
       try {
-        const { adminAuth: auth } = getAdminInstances();
-        if (auth) {
-          const decoded = await auth.verifyIdToken(idToken);
-          const tokenPhone = (decoded.phone_number || "").replace(/[^0-9]/g, "").slice(-10);
+        const decoded = await verifyFirebaseIdToken(idToken);
+        if (decoded?.phone_number) {
+          const tokenPhone = decoded.phone_number.replace(/[^0-9]/g, "").slice(-10);
           if (tokenPhone && tokenPhone !== cleanPhone) {
             return NextResponse.json(
               { success: false, error: "Authenticated phone session does not match the provided phone number." },
@@ -34,9 +39,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (tokenErr: any) {
-        console.warn("Firebase Admin ID token verification fallback:", tokenErr?.message);
-        // If Admin SDK verification fails due to service account/network issues on Vercel,
-        // but client already verified SMS OTP with Firebase Auth, continue with unified authentication
+        console.warn("Firebase ID token verification fallback:", tokenErr?.message);
       }
     } else if (!otp || String(otp).trim().length < 6) {
       return NextResponse.json(
