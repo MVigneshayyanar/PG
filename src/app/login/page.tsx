@@ -197,7 +197,7 @@ export default function UnifiedLoginPage() {
           {errorMessage && (
             <div
               className={`rounded-2xl p-4 text-xs flex flex-col gap-2.5 ${
-                (errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) || errorMessage.includes("not approved yet") || errorMessage.includes("not part of any PG")
+                errorMessage.includes("9626855406") || errorMessage.includes("not approved yet") || errorMessage.includes("not part of any PG")
                   ? "bg-amber-50 border border-amber-200 text-amber-950"
                   : "bg-rose-50 border border-rose-200 text-rose-800"
               }`}
@@ -205,7 +205,7 @@ export default function UnifiedLoginPage() {
               <div className="flex items-start gap-2.5">
                 <AlertCircle
                   className={`h-5 w-5 shrink-0 mt-0.5 ${
-                    (errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) || errorMessage.includes("not part of any PG")
+                    errorMessage.includes("9626855406") || errorMessage.includes("not part of any PG")
                       ? "text-amber-600"
                       : "text-rose-600"
                   }`}
@@ -214,7 +214,7 @@ export default function UnifiedLoginPage() {
                   {errorMessage.includes("not part of any PG") && (
                     <p className="font-bold text-amber-900 mb-0.5">Not Registered</p>
                   )}
-                  {(errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) && !errorMessage.includes("not part of any PG") && (
+                  {errorMessage.includes("9626855406") && !errorMessage.includes("not part of any PG") && (
                     <p className="font-bold text-amber-900 mb-0.5">Verification Required</p>
                   )}
                   <p>{errorMessage}</p>
@@ -231,7 +231,7 @@ export default function UnifiedLoginPage() {
                 </Link>
               )}
 
-              {(errorMessage.includes("9626855406") || errorMessage.includes("6381347842")) && !errorMessage.includes("not part of any PG") && (
+              {errorMessage.includes("9626855406") && !errorMessage.includes("not part of any PG") && (
                 <a
                   href="tel:9626855406"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#07361b] hover:bg-[#052814] text-white px-4 py-2.5 font-bold transition-colors w-full text-center shadow-xs"

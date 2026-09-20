@@ -402,6 +402,7 @@ export async function updatePGApplicationStatus(
   const store = getStore();
   let pg = store.pgs.find((p) => p.id === pgId);
 
+
   if (!pg && isFirebaseConfigured && db) {
     try {
       const snap = await getDoc(doc(db, "pgs", pgId));
@@ -452,16 +453,16 @@ export async function authenticateUnifiedPhone(phoneNumber: string, otp: string)
     throw new Error("Invalid OTP. Please enter the 6-digit verification code.");
   }
 
-  // 1. Check Super Admin Phones (configured via environment or authorized admin list)
-  const envAdminPhones = (
+  // 1. Check Super Admin Phone (only 9626855406 or configured ADMIN_PHONE_NUMBER)
+  const configuredAdminPhone = (
     process.env.ADMIN_PHONE_NUMBER ||
     process.env.NEXT_PUBLIC_ADMIN_PHONE ||
-    "9626855406,6381347842"
+    "9626855406"
   )
-    .split(",")
-    .map((p) => p.replace(/[^0-9]/g, "").slice(-10));
+    .replace(/[^0-9]/g, "")
+    .slice(-10);
 
-  if (envAdminPhones.includes(cleanPhone) || cleanPhone === "9626855406" || cleanPhone === "6381347842") {
+  if (cleanPhone === configuredAdminPhone || cleanPhone === "9626855406") {
     return {
       role: "admin" as const,
       user: {
